@@ -3,7 +3,7 @@ steps:
     args: ['build', '-t', 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend', '.']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend']
-  - name: 'gcr.io/google-cloud-sdk/slim'
+  - name: 'gcr.io/cloud-builders/gcloud'
     entrypoint: gcloud
     args:
       - 'run'
@@ -15,3 +15,5 @@ steps:
       - '--allow-unauthenticated'
 images:
   - 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend'
+options:
+  logging: CLOUD_LOGGING_ONLY
