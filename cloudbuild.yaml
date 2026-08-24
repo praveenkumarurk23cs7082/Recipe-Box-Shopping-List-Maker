@@ -3,7 +3,7 @@ steps:
     args: ['build', '-t', 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend', '.']
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend']
-  - name: 'gcr.io/google-cloud-sdk/slim'
+  - name: 'us-docker.pkg.dev/google.com/cloudsdktool/google-cloud-cli:slim'
     entrypoint: gcloud
     args:
       - 'run'
