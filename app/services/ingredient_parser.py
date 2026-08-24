@@ -1,14 +1,10 @@
 """
-Placeholder ingredient parser so the /recipes endpoint works end-to-end
-from Day 1, before #2's real parser is ready.
-
-#2: this is your file to replace. Keep the same function signature
-(parse_ingredient_line(line: str) -> dict with quantity/unit/name/raw_line
-keys) so routers/recipes.py doesn't need to change, and add:
-  - fuzzy quantities ("a pinch of salt", "salt to taste") -> quantity=None
-  - fraction handling ("1/2 cup") -> convert to float
-  - unit normalization (tbsp/tablespoon, etc.)
-  - unit tests for the tricky lines above
+Robust ingredient parser for extracting quantity, unit, and name from a raw text line.
+Supports:
+  - Numeric formats (integers, decimals, slash fractions like '1/2', mixed numbers like '1 1/2')
+  - Unicode fractions (½, ¼, ¾, etc.)
+  - Unit normalization (e.g., tablespoons/tbsp/tbsp. -> tbsp)
+  - Fuzzy / non-scalable fallbacks (e.g., 'a pinch of salt' -> quantity=None)
 """
 
 import re
@@ -22,43 +18,117 @@ class ParsedIngredient(TypedDict):
     raw_line: str
 
 
-_QTY_UNIT_NAME = re.compile(r"^([\d.\/]+)\s+([a-zA-Z]+)\s+(.+)$")
-_QTY_NAME = re.compile(r"^([\d.\/]+)\s+(.+)$")
+# Mapping of unicode fractions to float values
+UNICODE_FRACTIONS = {
+    "½": 0.5,
+    "¼": 0.25,
+    "¾": 0.75,
+    "⅓": 0.333,
+    "⅔": 0.667,
+    "⅛": 0.125,
+    "⅜": 0.375,
+    "⅝": 0.625,
+    "⅞": 0.875,
+}
+
+# Unit normalization map
+UNIT_MAP = {
+    "cup": "cup", "cups": "cup",
+    "tbsp": "tbsp", "tbsps": "tbsp", "tablespoon": "tbsp", "tablespoons": "tbsp",
+    "tsp": "tsp", "tsps": "tsp", "teaspoon": "tsp", "teaspoons": "tsp",
+    "oz": "oz", "ozs": "oz", "ounce": "oz", "ounces": "oz",
+    "lb": "lb", "lbs": "lb", "pound": "lb", "pounds": "lb",
+    "g": "g", "gram": "g", "grams": "g",
+    "kg": "kg", "kilogram": "kg", "kilograms": "kg",
+    "ml": "ml", "milliliter": "ml", "milliliters": "ml",
+    "l": "l", "liter": "l", "liters": "l",
+    "clove": "clove", "cloves": "clove",
+    "pinch": "pinch", "pinches": "pinch",
+    "can": "can", "cans": "can",
+    "slice": "slice", "slices": "slice",
+    "package": "package", "packages": "package", "pkg": "package", "pkgs": "package"
+}
+
+# Regex to detect starting numeric values (including mixed numbers, unicode fractions, and slash fractions)
+_QTY_PATTERN = re.compile(
+    r"^(?:"
+    r"(\d+)\s+([½¼¾⅓⅔⅛⅜⅝⅞])"  # Group 1, 2: Mixed unicode number (e.g. "1 ½")
+    r"|(\d+)\s+(\d+/\d+)"     # Group 3, 4: Mixed slash fraction (e.g. "1 1/2")
+    r"|([½¼¾⅓⅔⅛⅜⅝⅞])"          # Group 5: Standalone unicode fraction (e.g. "½")
+    r"|(\d+/\d+)"             # Group 6: Standalone slash fraction (e.g. "1/2")
+    r"|(\d+(?:\.\d+)?)"        # Group 7: Integer or decimal float (e.g. "1.5", "2")
+    r")\s*(.*)$"              # Group 8: The remaining text after the quantity
+)
 
 
-def _to_float(qty_str: str) -> Optional[float]:
-    try:
-        if "/" in qty_str:
-            num, denom = qty_str.split("/")
-            return float(num) / float(denom)
-        return float(qty_str)
-    except (ValueError, ZeroDivisionError):
-        return None
+def _parse_qty(match) -> Optional[float]:
+    # Group 1 & 2: mixed unicode fraction (e.g., "1 ½")
+    if match.group(1) and match.group(2):
+        whole = float(match.group(1))
+        frac = UNICODE_FRACTIONS[match.group(2)]
+        return whole + frac
+
+    # Group 3 & 4: mixed slash fraction (e.g., "1 1/2")
+    if match.group(3) and match.group(4):
+        whole = float(match.group(3))
+        num, denom = match.group(4).split("/")
+        return whole + (float(num) / float(denom))
+
+    # Group 5: standalone unicode fraction (e.g., "½")
+    if match.group(5):
+        return UNICODE_FRACTIONS[match.group(5)]
+
+    # Group 6: standalone slash fraction (e.g., "1/2")
+    if match.group(6):
+        num, denom = match.group(6).split("/")
+        return float(num) / float(denom)
+
+    # Group 7: integer or decimal float (e.g., "2", "1.5")
+    if match.group(7):
+        return float(match.group(7))
+
+    return None
 
 
 def parse_ingredient_line(line: str) -> ParsedIngredient:
     raw_line = line.strip()
+    if not raw_line:
+        return {"quantity": None, "unit": None, "name": "", "raw_line": ""}
 
-    match = _QTY_UNIT_NAME.match(raw_line)
-    if match:
-        qty_str, unit, name = match.groups()
+    match = _QTY_PATTERN.match(raw_line)
+    if not match:
+        # Fuzzy line (no leading number, e.g. "salt to taste") -> unscalable
+        return {"quantity": None, "unit": None, "name": raw_line, "raw_line": raw_line}
+
+    qty = _parse_qty(match)
+    rest = match.group(8).strip() if match.group(8) else ""
+
+    if not rest:
+        # Input was just a quantity (e.g., "2")
+        return {"quantity": qty, "unit": None, "name": "", "raw_line": raw_line}
+
+    # Split rest into first word and the remainder
+    words = rest.split(maxsplit=1)
+    first_word = words[0]
+    
+    # Strip common punctuation from the end of the first word (like dots in "tbsp.")
+    clean_first_word = first_word.rstrip(".,;:").lower()
+
+    if clean_first_word in UNIT_MAP:
+        unit = UNIT_MAP[clean_first_word]
+        name = words[1].strip() if len(words) > 1 else ""
         return {
-            "quantity": _to_float(qty_str),
+            "quantity": qty,
             "unit": unit,
             "name": name,
             "raw_line": raw_line,
         }
 
-    match = _QTY_NAME.match(raw_line)
-    if match:
-        qty_str, name = match.groups()
-        return {
-            "quantity": _to_float(qty_str),
-            "unit": None,
-            "name": name,
-            "raw_line": raw_line,
-        }
+    # First word is not a unit (e.g. "2 eggs")
+    return {
+        "quantity": qty,
+        "unit": None,
+        "name": rest,
+        "raw_line": raw_line,
+    }
 
-    # No leading number at all -> can't confidently parse (e.g. "salt to taste").
-    # Stored as unscalable, shown as-is in the UI per the shared data model.
-    return {"quantity": None, "unit": None, "name": raw_line, "raw_line": raw_line}
