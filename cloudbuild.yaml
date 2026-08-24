@@ -15,3 +15,5 @@ steps:
       - '--allow-unauthenticated'
 images:
   - 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend'
+options:
+  logging: CLOUD_LOGGING_ONLY
