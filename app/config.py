@@ -11,7 +11,7 @@ class Settings:
     Deployed (Cloud Run): #7 sets DATABASE_URL to the Cloud SQL Postgres
     connection string via Secret Manager / env var — no code change needed.
     """
-    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./recipe_box.db")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./recipe_box.db").strip()
 
 
 settings = Settings()
