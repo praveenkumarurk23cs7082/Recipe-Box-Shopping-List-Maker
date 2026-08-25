@@ -15,7 +15,10 @@
     <span class="brand-mark">RB</span>
     <h1>Recipe Box</h1>
   </div>
-  <button id="newRecipeBtn" class="btn btn-primary">+ New recipe</button>
+  <nav class="topbar-nav">
+    <button id="shoppingListNavBtn" class="btn btn-ghost">Shopping List</button>
+    <button id="newRecipeBtn" class="btn btn-primary">+ New recipe</button>
+  </nav>
 </header>
 
 <main>
@@ -101,6 +104,52 @@
 
   </section>
 
+  <!-- ============ RECIPE DETAIL VIEW ============ -->
+  <section id="detailView" class="view" hidden>
+
+    <button class="back-link" id="backToBoardFromDetailBtn">&larr; Back to recipe box</button>
+
+    <h2 id="detailTitle"></h2>
+    <div class="recipe-meta" id="detailMeta"></div>
+
+    <div class="multiplier-group" id="multiplierGroup">
+      <button type="button" class="chip active" data-multiplier="1">1x</button>
+      <button type="button" class="chip" data-multiplier="2">2x</button>
+      <button type="button" class="chip" data-multiplier="4">4x</button>
+    </div>
+
+    <ul class="detail-ingredient-list" id="detailIngredientList">
+      <!-- scaled ingredient lines injected by app.js -->
+    </ul>
+
+    <div class="form-actions">
+      <button type="button" class="btn btn-primary" id="addToShoppingListBtn">Add to Shopping List</button>
+    </div>
+    <span class="field-hint" id="addToListStatus"></span>
+
+  </section>
+
+  <!-- ============ SHOPPING LIST VIEW ============ -->
+  <section id="shoppingListView" class="view" hidden>
+
+    <button class="back-link" id="backToBoardFromListBtn">&larr; Back to recipe box</button>
+
+    <div class="form-actions">
+      <h2>Shopping List</h2>
+      <button type="button" class="btn btn-ghost" id="clearListBtn">Clear list</button>
+    </div>
+
+    <ul class="shopping-list" id="shoppingListItems">
+      <!-- checkable items injected by app.js -->
+    </ul>
+
+    <div id="shoppingListEmpty" class="empty-state" hidden>
+      <p class="empty-title">Your shopping list is empty</p>
+      <p class="empty-copy">Open a recipe and tap "Add to Shopping List" to fill it up.</p>
+    </div>
+
+  </section>
+
 </main>
 
 <!-- Delete confirmation -->
@@ -111,6 +160,18 @@
     <div class="dialog-actions">
       <button class="btn btn-ghost" id="cancelDeleteBtn">Keep it</button>
       <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- Clear list confirmation -->
+<div id="clearListDialog" class="dialog-overlay" hidden>
+  <div class="dialog">
+    <p class="dialog-title">Clear the shopping list?</p>
+    <p class="dialog-copy">This can't be undone.</p>
+    <div class="dialog-actions">
+      <button class="btn btn-ghost" id="cancelClearListBtn">Keep it</button>
+      <button class="btn btn-danger" id="confirmClearListBtn">Clear list</button>
     </div>
   </div>
 </div>

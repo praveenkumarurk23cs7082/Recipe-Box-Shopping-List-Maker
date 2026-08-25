@@ -1,8 +1,10 @@
 /* ===================================================================
-   Recipe Box — Frontend logic (Role #4)
+   Recipe Box — Frontend logic (Role #4, extended with #5's servings
+   scaler + shopping list, ported to vanilla JS)
 
    API CONTRACT — matches the real backend in Recipe-Box-Shopping-List-Maker
-   (app/routers/recipes.py, app/schemas.py) exactly:
+   (app/routers/recipes.py, app/routers/shopping_list.py, app/schemas.py)
+   exactly:
 
      GET    {API_BASE}/recipes                 -> 200, RecipeOut[]
      GET    {API_BASE}/recipes?category=X      -> 200, RecipeOut[]   (X = "breakfast"|"dinner"|"dessert")
@@ -10,6 +12,11 @@
      PUT    {API_BASE}/recipes/:id             -> 200, RecipeOut
      DELETE {API_BASE}/recipes/:id             -> 204, no body
      POST   {API_BASE}/upload/image            -> 200, { url: string }  (multipart/form-data, field name "file")
+
+     POST   {API_BASE}/shopping-list/from-recipe/:id  -> 201, ShoppingListItemOut[]  (body: { multiplier: number })
+     GET    {API_BASE}/shopping-list                  -> 200, ShoppingListItemOut[]
+     PATCH  {API_BASE}/shopping-list/:itemId/check     -> 200, ShoppingListItemOut
+     DELETE {API_BASE}/shopping-list                  -> 204, no body
 
    Request body (RecipeCreate / RecipeUpdate):
      {
@@ -50,6 +57,8 @@ const CATEGORIES = [
   { value: "dinner", label: "Dinner" },
   { value: "dessert", label: "Dessert" }
 ];
+
+const MULTIPLIERS = [1, 2, 4];
 
 const MOCK_RECIPES = [
   {
@@ -101,11 +110,15 @@ let activeFilter = "all";
 let usingMockData = false;
 let recipeIdPendingDelete = null;
 let currentImageUrl = null; // set by the file-upload handler; sent as image_url on save
+let activeDetailRecipe = null;
+let activeMultiplier = 1;
 
 // ---------------- DOM refs ----------------
 
 const dashboardView   = document.getElementById("dashboardView");
 const formView        = document.getElementById("formView");
+const detailView      = document.getElementById("detailView");
+const shoppingListView = document.getElementById("shoppingListView");
 const filterRow        = document.getElementById("filterRow");
 const recipeGrid       = document.getElementById("recipeGrid");
 const emptyState       = document.getElementById("emptyState");
@@ -126,6 +139,17 @@ const titleError       = document.getElementById("titleError");
 const ingredientsError = document.getElementById("ingredientsError");
 
 const deleteDialog       = document.getElementById("deleteDialog");
+
+const detailTitle          = document.getElementById("detailTitle");
+const detailMeta           = document.getElementById("detailMeta");
+const multiplierGroup      = document.getElementById("multiplierGroup");
+const detailIngredientList = document.getElementById("detailIngredientList");
+const addToShoppingListBtn = document.getElementById("addToShoppingListBtn");
+const addToListStatus      = document.getElementById("addToListStatus");
+
+const shoppingListItemsEl  = document.getElementById("shoppingListItems");
+const shoppingListEmpty    = document.getElementById("shoppingListEmpty");
+const clearListDialog      = document.getElementById("clearListDialog");
 
 // ---------------- Init ----------------
 
@@ -210,6 +234,33 @@ async function deleteRecipe(id) {
   recipes = recipes.filter(r => String(r.id) !== String(id));
 }
 
+async function addRecipeToShoppingList(recipeId, multiplier) {
+  const res = await fetch(`${API_BASE}/shopping-list/from-recipe/${recipeId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ multiplier })
+  });
+  if (!res.ok) throw new Error(`POST /shopping-list/from-recipe/${recipeId} failed: ${res.status}`);
+  return res.json();
+}
+
+async function fetchShoppingList() {
+  const res = await fetch(`${API_BASE}/shopping-list`);
+  if (!res.ok) throw new Error(`GET /shopping-list failed: ${res.status}`);
+  return res.json();
+}
+
+async function toggleShoppingItemChecked(itemId) {
+  const res = await fetch(`${API_BASE}/shopping-list/${itemId}/check`, { method: "PATCH" });
+  if (!res.ok) throw new Error(`PATCH /shopping-list/${itemId}/check failed: ${res.status}`);
+  return res.json();
+}
+
+async function clearShoppingListApi() {
+  const res = await fetch(`${API_BASE}/shopping-list`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE /shopping-list failed: ${res.status}`);
+}
+
 // ---------------- Rendering: filter chips ----------------
 
 function renderFilterChips() {
@@ -248,9 +299,6 @@ function renderRecipes() {
   visible.forEach(recipe => recipeGrid.appendChild(buildRecipeCard(recipe)));
 }
 
-// Reusable recipe-card component. #5 can follow this same pattern
-// (a small function that returns a DOM node from a data object) for
-// whatever cards their screen needs.
 function buildRecipeCard(recipe) {
   const card = document.createElement("article");
   card.className = "recipe-card";
@@ -267,6 +315,8 @@ function buildRecipeCard(recipe) {
 
   const title = document.createElement("h3");
   title.textContent = recipe.title;
+  title.className = "recipe-card-title";
+  title.addEventListener("click", () => openRecipeDetail(recipe));
 
   const prepDisplay = recipe.prep_time_min == null ? "—" : `${recipe.prep_time_min} min`;
 
@@ -302,14 +352,31 @@ function buildRecipeCard(recipe) {
 
 // ---------------- View switching ----------------
 
-function showDashboard() {
+function hideAllViews() {
+  dashboardView.hidden = true;
   formView.hidden = true;
+  detailView.hidden = true;
+  shoppingListView.hidden = true;
+}
+
+function showDashboard() {
+  hideAllViews();
   dashboardView.hidden = false;
 }
 
 function showForm() {
-  dashboardView.hidden = true;
+  hideAllViews();
   formView.hidden = false;
+}
+
+function showDetail() {
+  hideAllViews();
+  detailView.hidden = false;
+}
+
+function showShoppingList() {
+  hideAllViews();
+  shoppingListView.hidden = false;
 }
 
 function resetImagePicker() {
@@ -347,6 +414,158 @@ function openFormForEdit(recipe) {
   clearFieldErrors();
   showForm();
   titleInput.focus();
+}
+
+// ---------------- Recipe detail + servings scaler ----------------
+
+function formatQuantity(quantity) {
+  if (Number.isInteger(quantity)) {
+    return String(quantity);
+  }
+  return String(Number(quantity.toFixed(3)));
+}
+
+function openRecipeDetail(recipe) {
+  activeDetailRecipe = recipe;
+  activeMultiplier = 1;
+
+  detailTitle.textContent = recipe.title;
+  const prepDisplay = recipe.prep_time_min == null ? "—" : `${recipe.prep_time_min} min`;
+  detailMeta.innerHTML = `
+    <span>${escapeHtml(prepDisplay)}</span>
+    <span>${escapeHtml(String(recipe.base_servings))} base servings</span>
+    <span>${recipe.category}</span>
+  `;
+
+  Array.from(multiplierGroup.children).forEach(chip => {
+    chip.classList.toggle("active", Number(chip.dataset.multiplier) === activeMultiplier);
+  });
+
+  addToListStatus.textContent = "";
+  renderDetailIngredients();
+  showDetail();
+}
+
+function renderDetailIngredients() {
+  detailIngredientList.innerHTML = "";
+  activeDetailRecipe.ingredients.forEach(ingredient => {
+    const li = document.createElement("li");
+    if (ingredient.quantity == null) {
+      li.textContent = ingredient.raw_line;
+    } else {
+      const scaledQuantity = ingredient.quantity * activeMultiplier;
+      const quantityAndUnit = [formatQuantity(scaledQuantity), ingredient.unit]
+        .filter(Boolean)
+        .join(" ");
+      li.textContent = `${quantityAndUnit} ${ingredient.name}`;
+    }
+    detailIngredientList.appendChild(li);
+  });
+}
+
+function handleMultiplierClick(event) {
+  const chip = event.target.closest("[data-multiplier]");
+  if (!chip) return;
+  activeMultiplier = Number(chip.dataset.multiplier);
+  Array.from(multiplierGroup.children).forEach(c => {
+    c.classList.toggle("active", c === chip);
+  });
+  renderDetailIngredients();
+}
+
+async function handleAddToShoppingList() {
+  if (!activeDetailRecipe) return;
+  addToListStatus.textContent = "Adding...";
+  addToShoppingListBtn.disabled = true;
+  try {
+    if (usingMockData) {
+      throw new Error("Shopping list requires the live API — mock mode is read-only for this.");
+    }
+    await addRecipeToShoppingList(activeDetailRecipe.id, activeMultiplier);
+    addToListStatus.textContent = `Added at ${activeMultiplier}x — check the Shopping List.`;
+  } catch (err) {
+    console.error(err);
+    addToListStatus.textContent = "Couldn't add to the shopping list. Try again.";
+  } finally {
+    addToShoppingListBtn.disabled = false;
+  }
+}
+
+// ---------------- Shopping list view ----------------
+
+async function loadShoppingList() {
+  shoppingListItemsEl.innerHTML = "";
+  try {
+    const items = await fetchShoppingList();
+    renderShoppingListItems(items);
+  } catch (err) {
+    console.error(err);
+    showStatusBanner("Couldn't load the shopping list. Check the connection and try again.", "error");
+  }
+}
+
+function renderShoppingListItems(items) {
+  shoppingListItemsEl.innerHTML = "";
+
+  if (items.length === 0) {
+    shoppingListEmpty.hidden = false;
+    shoppingListItemsEl.hidden = true;
+    return;
+  }
+  shoppingListEmpty.hidden = true;
+  shoppingListItemsEl.hidden = false;
+
+  items.forEach(item => shoppingListItemsEl.appendChild(buildShoppingListRow(item)));
+}
+
+function buildShoppingListRow(item) {
+  const li = document.createElement("li");
+  li.className = "shopping-item" + (item.is_checked ? " checked" : "");
+
+  const checkbox = document.createElement("input");
+  checkbox.type = "checkbox";
+  checkbox.checked = item.is_checked;
+  checkbox.addEventListener("change", () => handleToggleShoppingItem(item.id));
+
+  const label = document.createElement("span");
+  const quantityAndUnit = [
+    item.quantity == null ? null : formatQuantity(item.quantity),
+    item.unit
+  ].filter(Boolean).join(" ");
+  label.textContent = quantityAndUnit ? `${quantityAndUnit} ${item.name}` : item.name;
+
+  li.append(checkbox, label);
+  return li;
+}
+
+async function handleToggleShoppingItem(itemId) {
+  try {
+    await toggleShoppingItemChecked(itemId);
+    await loadShoppingList();
+  } catch (err) {
+    console.error(err);
+    showStatusBanner("Couldn't update that item. Try again.", "error");
+  }
+}
+
+function openClearListDialog() {
+  clearListDialog.hidden = false;
+}
+
+function closeClearListDialog() {
+  clearListDialog.hidden = true;
+}
+
+async function confirmClearList() {
+  try {
+    await clearShoppingListApi();
+    await loadShoppingList();
+  } catch (err) {
+    console.error(err);
+    showStatusBanner("Couldn't clear the shopping list. Try again.", "error");
+  } finally {
+    closeClearListDialog();
+  }
 }
 
 // ---------------- Image upload ----------------
@@ -489,4 +708,17 @@ function wireStaticEvents() {
 
   document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteDialog);
   document.getElementById("confirmDeleteBtn").addEventListener("click", confirmDelete);
+
+  document.getElementById("backToBoardFromDetailBtn").addEventListener("click", showDashboard);
+  multiplierGroup.addEventListener("click", handleMultiplierClick);
+  addToShoppingListBtn.addEventListener("click", handleAddToShoppingList);
+
+  document.getElementById("shoppingListNavBtn").addEventListener("click", () => {
+    showShoppingList();
+    loadShoppingList();
+  });
+  document.getElementById("backToBoardFromListBtn").addEventListener("click", showDashboard);
+  document.getElementById("clearListBtn").addEventListener("click", openClearListDialog);
+  document.getElementById("cancelClearListBtn").addEventListener("click", closeClearListDialog);
+  document.getElementById("confirmClearListBtn").addEventListener("click", confirmClearList);
 }
