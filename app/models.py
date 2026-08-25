@@ -32,6 +32,7 @@ class Recipe(Base):
     category = Column(SAEnum(Category), nullable=False)
     prep_time_min = Column(Integer, nullable=True)
     base_servings = Column(Integer, nullable=False, default=4)  # the "1x" baseline
+    image_url = Column(String, nullable=True)  # optional link to a recipe photo
     created_by = Column(String, nullable=True)  # optional, if auth is added later
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
