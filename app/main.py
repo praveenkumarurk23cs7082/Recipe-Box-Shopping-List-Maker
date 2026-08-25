@@ -15,6 +15,7 @@ app.add_middleware(
 
 app.include_router(recipes.router)
 app.include_router(shopping_list.router)
+app.include_router(upload.router)
 app.include_router(scan.router)
 
 
