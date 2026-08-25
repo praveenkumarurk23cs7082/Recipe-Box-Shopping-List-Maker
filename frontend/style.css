@@ -473,7 +473,9 @@ input:invalid:not(:placeholder-shown) {
   font-size: 11px;
   font-weight: 600;
   vertical-align: middle;
-}/* ---------------- Recipe detail + servings scaler ---------------- */
+}
+
+/* ---------------- Recipe detail + servings scaler ---------------- */
 
 .recipe-card-title {
   cursor: pointer;
@@ -536,6 +538,7 @@ input:invalid:not(:placeholder-shown) {
   .recipe-grid { grid-template-columns: 1fr; }
   .field-row { flex-direction: column; gap: 0; }
 }
+
 /* ---------------- Loading state ---------------- */
 
 .loading-state {
@@ -544,6 +547,7 @@ input:invalid:not(:placeholder-shown) {
   color: var(--ink-soft);
   font-size: 14px;
 }
+
 /* ---------------- Auth ---------------- */
 
 .user-info {
@@ -568,6 +572,10 @@ input:invalid:not(:placeholder-shown) {
   border-radius: var(--radius);
   overflow: hidden;
   animation: signinFadeIn 0.5s ease;
+}
+
+#signInView[hidden] {
+  display: none;
 }
 
 @keyframes signinFadeIn {
