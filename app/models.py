@@ -78,6 +78,6 @@ class ShoppingListItem(Base):
     quantity = Column(Float, nullable=True)
     unit = Column(String, nullable=True)
     is_checked = Column(Boolean, default=False, nullable=False)
-        source_recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # traceability only
+    source_recipe_id = Column(Integer, ForeignKey("recipes.id"), nullable=True)  # traceability only
     user_id = Column(String, nullable=True, index=True)  # Firebase uid of the owning user
     added_at = Column(DateTime(timezone=True), server_default=func.now())
