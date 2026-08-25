@@ -137,6 +137,9 @@ const servingsInput    = document.getElementById("servings");
 const ingredientsInput = document.getElementById("ingredients");
 const titleError       = document.getElementById("titleError");
 const ingredientsError = document.getElementById("ingredientsError");
+const scanFileInput    = document.getElementById("scanFile");
+const scanStatus       = document.getElementById("scanStatus");
+
 
 const deleteDialog       = document.getElementById("deleteDialog");
 
@@ -151,6 +154,9 @@ const shoppingListItemsEl  = document.getElementById("shoppingListItems");
 const shoppingListEmpty    = document.getElementById("shoppingListEmpty");
 const clearListDialog      = document.getElementById("clearListDialog");
 const shoppingListCountBadge = document.getElementById("shoppingListCount");
+const recipesLoading       = document.getElementById("recipesLoading");
+const shoppingListLoading  = document.getElementById("shoppingListLoading");
+
 
 // ---------------- Init ----------------
 
@@ -165,6 +171,9 @@ async function init() {
 // ---------------- Data loading ----------------
 
 async function loadRecipes() {
+  recipesLoading.hidden = false;
+  recipeGrid.hidden = true;
+  emptyState.hidden = true;
   try {
     const res = await fetch(`${API_BASE}/recipes`);
     if (!res.ok) throw new Error(`GET /recipes failed: ${res.status}`);
@@ -179,6 +188,8 @@ async function loadRecipes() {
       "Showing sample recipes — couldn't reach the recipe API yet. Changes here won't be saved to the server.",
       "error"
     );
+  } finally {
+    recipesLoading.hidden = true;
   }
   renderRecipes();
 }
@@ -190,6 +201,15 @@ async function uploadImage(file) {
   if (!res.ok) throw new Error(`POST /upload/image failed: ${res.status}`);
   const data = await res.json();
   return data.url;
+}
+
+async function scanIngredients(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/scan/ingredients`, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`POST /scan/ingredients failed: ${res.status}`);
+  const data = await res.json();
+  return data.lines;
 }
 
 async function createRecipe(recipe) {
@@ -386,7 +406,30 @@ function resetImagePicker() {
   imagePreview.src = "";
   imagePreview.style.display = "none";
   imageUploadStatus.textContent = "";
+  scanFileInput.value = "";
+  scanStatus.textContent = "";
 }
+
+async function handleScanFileChange() {
+  const file = scanFileInput.files[0];
+  if (!file) return;
+
+  scanStatus.textContent = "Scanning...";
+  try {
+    const lines = await scanIngredients(file);
+    if (lines.length === 0) {
+      scanStatus.textContent = "Couldn't find any ingredient lines in that photo.";
+      return;
+    }
+    const existing = ingredientsInput.value.trim();
+    ingredientsInput.value = existing ? `${existing}\n${lines.join("\n")}` : lines.join("\n");
+    scanStatus.textContent = `Found ${lines.length} ingredient line(s) — review them below.`;
+  } catch (err) {
+    console.error(err);
+    scanStatus.textContent = "Couldn't scan that photo — try again or type ingredients manually.";
+  }
+}
+
 
 function openFormForCreate() {
   recipeForm.reset();
@@ -514,15 +557,22 @@ async function updateShoppingListBadge() {
 
 async function loadShoppingList() {
   shoppingListItemsEl.innerHTML = "";
-    try {
+  shoppingListLoading.hidden = false;
+  shoppingListItemsEl.hidden = true;
+  shoppingListEmpty.hidden = true;
+  try {
     const items = await fetchShoppingList();
     renderShoppingListItems(items);
     await updateShoppingListBadge();
   } catch (err) {
     console.error(err);
     showStatusBanner("Couldn't load the shopping list. Check the connection and try again.", "error");
+  } finally {
+    shoppingListLoading.hidden = true;
   }
 }
+
+
 
 function renderShoppingListItems(items) {
   shoppingListItemsEl.innerHTML = "";
@@ -724,7 +774,8 @@ function wireStaticEvents() {
   document.getElementById("backToBoardBtn").addEventListener("click", showDashboard);
   document.getElementById("cancelFormBtn").addEventListener("click", showDashboard);
   recipeForm.addEventListener("submit", handleFormSubmit);
-  imageFileInput.addEventListener("change", handleImageFileChange);
+   imageFileInput.addEventListener("change", handleImageFileChange);
+  scanFileInput.addEventListener("change", handleScanFileChange);
 
   document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteDialog);
   document.getElementById("confirmDeleteBtn").addEventListener("click", confirmDelete);
