@@ -554,20 +554,77 @@ input:invalid:not(:placeholder-shown) {
   color: var(--ink-soft);
 }
 
-.signin-box {
-  max-width: 360px;
-  margin: 80px auto;
-  text-align: center;
-  padding: 40px 28px;
-  background: var(--paper);
-  border: 1px solid var(--line);
+#signInView {
+  min-height: calc(100vh - 90px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  position: relative;
+  background:
+    linear-gradient(rgba(38,42,34,0.55), rgba(38,42,34,0.45)),
+    url("https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&w=1600&q=80")
+    center / cover no-repeat;
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
+  overflow: hidden;
+  animation: signinFadeIn 0.5s ease;
 }
+
+@keyframes signinFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.signin-box {
+  max-width: 380px;
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  padding: 44px 32px 36px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.35);
+}
+
+.signin-emoji {
+  font-size: 42px;
+  line-height: 1;
+  margin-bottom: 14px;
+  display: block;
+}
+
 .signin-box h2 {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 20px;
+  font-size: 24px;
   margin: 0 0 10px;
+  color: var(--ink);
 }
 
+.signin-box .empty-copy {
+  font-size: 14px;
+  line-height: 1.5;
+  margin-bottom: 26px;
+}
+
+.signin-box .btn-primary {
+  width: 100%;
+  padding: 13px 18px;
+  font-size: 15px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.signin-box .btn-primary:hover {
+  transform: translateY(-1px);
+  background: var(--sage-dark);
+}
+
+@media (max-width: 640px) {
+  #signInView { min-height: calc(100vh - 130px); padding: 16px; }
+  .signin-box { padding: 36px 24px 28px; }
+}
