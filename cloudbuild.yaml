@@ -21,7 +21,7 @@ steps:
       - 'push'
       - 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend:latest'
 
-  - name: 'gcr.io/google-cloud-sdk/slim'
+  - name: 'gcr.io/cloud-builders/gcloud'
     id: 'deploy'
     entrypoint: gcloud
     args:
