@@ -16,6 +16,7 @@
        category: "breakfast" | "dinner" | "dessert",   // lowercase — matches the DB enum
        prep_time_min: number | null,
        base_servings: number,                          // must be > 0
+       image_url: string | null,                        // optional link to a photo
        ingredient_lines: string[]                       // raw textarea lines; #2's parser splits these server-side
      }
 
@@ -27,6 +28,7 @@
        category: "breakfast" | "dinner" | "dessert",
        prep_time_min: number | null,
        base_servings: number,
+       image_url: string | null,
        created_at: string,
        ingredients: [
          { id, quantity: number|null, unit: string|null, name: string, raw_line: string, sort_order: number }
@@ -55,6 +57,7 @@ const MOCK_RECIPES = [
     category: "dinner",
     prep_time_min: 25,
     base_servings: 4,
+    image_url: null,
     ingredients: [
       { id: 1, quantity: 2, unit: null, name: "chicken breasts", raw_line: "2 chicken breasts", sort_order: 0 },
       { id: 2, quantity: 2, unit: "cup", name: "broccoli", raw_line: "2 cups broccoli", sort_order: 1 },
@@ -68,6 +71,7 @@ const MOCK_RECIPES = [
     category: "breakfast",
     prep_time_min: 10,
     base_servings: 2,
+    image_url: null,
     ingredients: [
       { id: 5, quantity: 1, unit: "cup", name: "rolled oats", raw_line: "1 cup rolled oats", sort_order: 0 },
       { id: 6, quantity: 1, unit: "cup", name: "milk", raw_line: "1 cup milk", sort_order: 1 },
@@ -80,6 +84,7 @@ const MOCK_RECIPES = [
     category: "dessert",
     prep_time_min: 20,
     base_servings: 12,
+    image_url: null,
     ingredients: [
       { id: 8, quantity: 2, unit: "cup", name: "flour", raw_line: "2 cups flour", sort_order: 0 },
       { id: 9, quantity: 1, unit: "cup", name: "butter", raw_line: "1 cup butter", sort_order: 1 },
@@ -108,6 +113,7 @@ const recipeForm       = document.getElementById("recipeForm");
 const formHeading      = document.getElementById("formHeading");
 const recipeIdInput    = document.getElementById("recipeId");
 const titleInput       = document.getElementById("title");
+const imageUrlInput    = document.getElementById("imageUrl");
 const categoryInput    = document.getElementById("category");
 const prepTimeInput    = document.getElementById("prepTime");
 const servingsInput    = document.getElementById("servings");
@@ -237,6 +243,15 @@ function buildRecipeCard(recipe) {
   card.className = "recipe-card";
   card.dataset.category = recipe.category;
 
+  if (recipe.image_url) {
+    const img = document.createElement("img");
+    img.src = recipe.image_url;
+    img.alt = recipe.title;
+    img.className = "recipe-photo";
+    img.addEventListener("error", () => { img.style.display = "none"; });
+    card.appendChild(img);
+  }
+
   const title = document.createElement("h3");
   title.textContent = recipe.title;
 
@@ -296,6 +311,7 @@ function openFormForCreate() {
 function openFormForEdit(recipe) {
   recipeIdInput.value = recipe.id;
   titleInput.value = recipe.title;
+  imageUrlInput.value = recipe.image_url ?? "";
   categoryInput.value = recipe.category;
   prepTimeInput.value = recipe.prep_time_min ?? "";
   servingsInput.value = recipe.base_servings;
@@ -313,6 +329,7 @@ async function handleFormSubmit(event) {
   clearFieldErrors();
 
   const title = titleInput.value.trim();
+  const image_url = imageUrlInput.value.trim() || null;
   const category = categoryInput.value; // already lowercase: "breakfast" | "dinner" | "dessert"
   const prep_time_min = prepTimeInput.value === "" ? null : Number(prepTimeInput.value);
   const base_servings = Number(servingsInput.value);
@@ -333,7 +350,7 @@ async function handleFormSubmit(event) {
   if (!recipeForm.reportValidity()) hasError = true;
   if (hasError) return;
 
-  const payload = { title, category, prep_time_min, base_servings, ingredient_lines };
+  const payload = { title, category, prep_time_min, base_servings, image_url, ingredient_lines };
   const existingId = recipeIdInput.value;
 
   const saveBtn = document.getElementById("saveBtn");
