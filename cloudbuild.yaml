@@ -15,6 +15,7 @@ steps:
       - '--region=asia-south1'
       - '--platform=managed'
       - '--allow-unauthenticated'
+      - '--project=recipe-shopping-mvp'
 
 images:
   - 'asia-south1-docker.pkg.dev/recipe-shopping-mvp/cloud-run-source-deploy/recipe-backend'
