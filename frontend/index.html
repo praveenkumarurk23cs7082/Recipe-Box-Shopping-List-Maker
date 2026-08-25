@@ -58,9 +58,10 @@
       </div>
 
       <div class="field">
-        <label for="imageUrl">Image URL (optional)</label>
-        <span class="field-hint">Paste a link to a photo of the dish</span>
-        <input type="url" id="imageUrl" name="imageUrl" placeholder="https://example.com/photo.jpg">
+        <label for="imageFile">Recipe photo (optional)</label>
+        <input type="file" id="imageFile" accept="image/*">
+        <span class="field-hint" id="imageUploadStatus"></span>
+        <img id="imagePreview" class="recipe-photo" style="display:none; margin-top:8px;" alt="Preview">
       </div>
 
       <div class="field-row">

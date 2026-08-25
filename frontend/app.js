@@ -9,6 +9,7 @@
      POST   {API_BASE}/recipes                 -> 201, RecipeOut
      PUT    {API_BASE}/recipes/:id             -> 200, RecipeOut
      DELETE {API_BASE}/recipes/:id             -> 204, no body
+     POST   {API_BASE}/upload/image            -> 200, { url: string }  (multipart/form-data, field name "file")
 
    Request body (RecipeCreate / RecipeUpdate):
      {
@@ -16,7 +17,7 @@
        category: "breakfast" | "dinner" | "dessert",   // lowercase — matches the DB enum
        prep_time_min: number | null,
        base_servings: number,                          // must be > 0
-       image_url: string | null,                        // optional link to a photo
+       image_url: string | null,                        // set from the /upload/image response, not typed by hand
        ingredient_lines: string[]                       // raw textarea lines; #2's parser splits these server-side
      }
 
@@ -99,6 +100,7 @@ let recipes = [];
 let activeFilter = "all";
 let usingMockData = false;
 let recipeIdPendingDelete = null;
+let currentImageUrl = null; // set by the file-upload handler; sent as image_url on save
 
 // ---------------- DOM refs ----------------
 
@@ -113,7 +115,9 @@ const recipeForm       = document.getElementById("recipeForm");
 const formHeading      = document.getElementById("formHeading");
 const recipeIdInput    = document.getElementById("recipeId");
 const titleInput       = document.getElementById("title");
-const imageUrlInput    = document.getElementById("imageUrl");
+const imageFileInput   = document.getElementById("imageFile");
+const imagePreview     = document.getElementById("imagePreview");
+const imageUploadStatus = document.getElementById("imageUploadStatus");
 const categoryInput    = document.getElementById("category");
 const prepTimeInput    = document.getElementById("prepTime");
 const servingsInput    = document.getElementById("servings");
@@ -152,6 +156,15 @@ async function loadRecipes() {
     );
   }
   renderRecipes();
+}
+
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/upload/image`, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`POST /upload/image failed: ${res.status}`);
+  const data = await res.json();
+  return data.url;
 }
 
 async function createRecipe(recipe) {
@@ -299,9 +312,18 @@ function showForm() {
   formView.hidden = false;
 }
 
+function resetImagePicker() {
+  currentImageUrl = null;
+  imageFileInput.value = "";
+  imagePreview.src = "";
+  imagePreview.style.display = "none";
+  imageUploadStatus.textContent = "";
+}
+
 function openFormForCreate() {
   recipeForm.reset();
   recipeIdInput.value = "";
+  resetImagePicker();
   formHeading.textContent = "New recipe";
   clearFieldErrors();
   showForm();
@@ -311,7 +333,12 @@ function openFormForCreate() {
 function openFormForEdit(recipe) {
   recipeIdInput.value = recipe.id;
   titleInput.value = recipe.title;
-  imageUrlInput.value = recipe.image_url ?? "";
+  resetImagePicker();
+  if (recipe.image_url) {
+    currentImageUrl = recipe.image_url;
+    imagePreview.src = recipe.image_url;
+    imagePreview.style.display = "block";
+  }
   categoryInput.value = recipe.category;
   prepTimeInput.value = recipe.prep_time_min ?? "";
   servingsInput.value = recipe.base_servings;
@@ -322,6 +349,27 @@ function openFormForEdit(recipe) {
   titleInput.focus();
 }
 
+// ---------------- Image upload ----------------
+
+async function handleImageFileChange() {
+  const file = imageFileInput.files[0];
+  if (!file) return;
+
+  imageUploadStatus.textContent = "Uploading...";
+  try {
+    const url = await uploadImage(file);
+    currentImageUrl = url;
+    imagePreview.src = url;
+    imagePreview.style.display = "block";
+    imageUploadStatus.textContent = "Uploaded.";
+  } catch (err) {
+    console.error(err);
+    currentImageUrl = null;
+    imagePreview.style.display = "none";
+    imageUploadStatus.textContent = "Upload failed — try a different image.";
+  }
+}
+
 // ---------------- Form submit ----------------
 
 async function handleFormSubmit(event) {
@@ -329,7 +377,7 @@ async function handleFormSubmit(event) {
   clearFieldErrors();
 
   const title = titleInput.value.trim();
-  const image_url = imageUrlInput.value.trim() || null;
+  const image_url = currentImageUrl;
   const category = categoryInput.value; // already lowercase: "breakfast" | "dinner" | "dessert"
   const prep_time_min = prepTimeInput.value === "" ? null : Number(prepTimeInput.value);
   const base_servings = Number(servingsInput.value);
@@ -437,6 +485,7 @@ function wireStaticEvents() {
   document.getElementById("backToBoardBtn").addEventListener("click", showDashboard);
   document.getElementById("cancelFormBtn").addEventListener("click", showDashboard);
   recipeForm.addEventListener("submit", handleFormSubmit);
+  imageFileInput.addEventListener("change", handleImageFileChange);
 
   document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteDialog);
   document.getElementById("confirmDeleteBtn").addEventListener("click", confirmDelete);
