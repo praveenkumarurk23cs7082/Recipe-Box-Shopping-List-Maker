@@ -137,6 +137,9 @@ const servingsInput    = document.getElementById("servings");
 const ingredientsInput = document.getElementById("ingredients");
 const titleError       = document.getElementById("titleError");
 const ingredientsError = document.getElementById("ingredientsError");
+const scanFileInput    = document.getElementById("scanFile");
+const scanStatus       = document.getElementById("scanStatus");
+
 
 const deleteDialog       = document.getElementById("deleteDialog");
 
@@ -198,6 +201,15 @@ async function uploadImage(file) {
   if (!res.ok) throw new Error(`POST /upload/image failed: ${res.status}`);
   const data = await res.json();
   return data.url;
+}
+
+async function scanIngredients(file) {
+  const formData = new FormData();
+  formData.append("file", file);
+  const res = await fetch(`${API_BASE}/scan/ingredients`, { method: "POST", body: formData });
+  if (!res.ok) throw new Error(`POST /scan/ingredients failed: ${res.status}`);
+  const data = await res.json();
+  return data.lines;
 }
 
 async function createRecipe(recipe) {
@@ -394,7 +406,30 @@ function resetImagePicker() {
   imagePreview.src = "";
   imagePreview.style.display = "none";
   imageUploadStatus.textContent = "";
+  scanFileInput.value = "";
+  scanStatus.textContent = "";
 }
+
+async function handleScanFileChange() {
+  const file = scanFileInput.files[0];
+  if (!file) return;
+
+  scanStatus.textContent = "Scanning...";
+  try {
+    const lines = await scanIngredients(file);
+    if (lines.length === 0) {
+      scanStatus.textContent = "Couldn't find any ingredient lines in that photo.";
+      return;
+    }
+    const existing = ingredientsInput.value.trim();
+    ingredientsInput.value = existing ? `${existing}\n${lines.join("\n")}` : lines.join("\n");
+    scanStatus.textContent = `Found ${lines.length} ingredient line(s) — review them below.`;
+  } catch (err) {
+    console.error(err);
+    scanStatus.textContent = "Couldn't scan that photo — try again or type ingredients manually.";
+  }
+}
+
 
 function openFormForCreate() {
   recipeForm.reset();
@@ -739,7 +774,8 @@ function wireStaticEvents() {
   document.getElementById("backToBoardBtn").addEventListener("click", showDashboard);
   document.getElementById("cancelFormBtn").addEventListener("click", showDashboard);
   recipeForm.addEventListener("submit", handleFormSubmit);
-  imageFileInput.addEventListener("change", handleImageFileChange);
+   imageFileInput.addEventListener("change", handleImageFileChange);
+  scanFileInput.addEventListener("change", handleScanFileChange);
 
   document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteDialog);
   document.getElementById("confirmDeleteBtn").addEventListener("click", confirmDelete);
