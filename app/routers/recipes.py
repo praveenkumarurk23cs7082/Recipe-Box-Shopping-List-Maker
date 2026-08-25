@@ -36,6 +36,7 @@ def create_recipe(payload: schemas.RecipeCreate, db: Session = Depends(get_db)):
         category=payload.category,
         prep_time_min=payload.prep_time_min,
         base_servings=payload.base_servings,
+        image_url=payload.image_url,
     )
     recipe.ingredients = _build_ingredient_rows(payload.ingredient_lines)
     db.add(recipe)
@@ -77,6 +78,8 @@ def update_recipe(recipe_id: int, payload: schemas.RecipeUpdate, db: Session = D
         recipe.prep_time_min = payload.prep_time_min
     if payload.base_servings is not None:
         recipe.base_servings = payload.base_servings
+    if payload.image_url is not None:
+        recipe.image_url = payload.image_url
     if payload.ingredient_lines is not None:
         recipe.ingredients = _build_ingredient_rows(payload.ingredient_lines)
 
