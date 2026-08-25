@@ -151,6 +151,9 @@ const shoppingListItemsEl  = document.getElementById("shoppingListItems");
 const shoppingListEmpty    = document.getElementById("shoppingListEmpty");
 const clearListDialog      = document.getElementById("clearListDialog");
 const shoppingListCountBadge = document.getElementById("shoppingListCount");
+const recipesLoading       = document.getElementById("recipesLoading");
+const shoppingListLoading  = document.getElementById("shoppingListLoading");
+
 
 // ---------------- Init ----------------
 
@@ -165,6 +168,9 @@ async function init() {
 // ---------------- Data loading ----------------
 
 async function loadRecipes() {
+  recipesLoading.hidden = false;
+  recipeGrid.hidden = true;
+  emptyState.hidden = true;
   try {
     const res = await fetch(`${API_BASE}/recipes`);
     if (!res.ok) throw new Error(`GET /recipes failed: ${res.status}`);
@@ -179,6 +185,8 @@ async function loadRecipes() {
       "Showing sample recipes — couldn't reach the recipe API yet. Changes here won't be saved to the server.",
       "error"
     );
+  } finally {
+    recipesLoading.hidden = true;
   }
   renderRecipes();
 }
@@ -514,15 +522,22 @@ async function updateShoppingListBadge() {
 
 async function loadShoppingList() {
   shoppingListItemsEl.innerHTML = "";
-    try {
+  shoppingListLoading.hidden = false;
+  shoppingListItemsEl.hidden = true;
+  shoppingListEmpty.hidden = true;
+  try {
     const items = await fetchShoppingList();
     renderShoppingListItems(items);
     await updateShoppingListBadge();
   } catch (err) {
     console.error(err);
     showStatusBanner("Couldn't load the shopping list. Check the connection and try again.", "error");
+  } finally {
+    shoppingListLoading.hidden = true;
   }
 }
+
+
 
 function renderShoppingListItems(items) {
   shoppingListItemsEl.innerHTML = "";
