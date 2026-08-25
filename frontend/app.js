@@ -31,7 +31,7 @@ const API_BASE = "https://recipe-backend-156431190697.asia-south1.run.app"; // l
 // const API_BASE = "http://127.0.0.1:8000";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCn•••••••••••••••••••••••••••••••",
+  apiKey: "AIzaSyCn3zNctmuDfq1rjXzLxy-mIgbtKMrMTek",
   authDomain: "recipe-shopping-mvp.firebaseapp.com",
   projectId: "recipe-shopping-mvp",
   storageBucket: "recipe-shopping-mvp.firebasestorage.app",
