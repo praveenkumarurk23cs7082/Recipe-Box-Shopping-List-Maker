@@ -32,6 +32,10 @@
 
     <div id="statusBanner" class="status-banner" hidden></div>
 
+    <div id="recipesLoading" class="loading-state" hidden>Loading recipes…</div>
+
+
+
     <div id="recipeGrid" class="recipe-grid">
       <!-- recipe cards injected by app.js -->
     </div>
@@ -138,10 +142,11 @@
       <h2>Shopping List</h2>
       <button type="button" class="btn btn-ghost" id="clearListBtn">Clear list</button>
     </div>
-
-    <ul class="shopping-list" id="shoppingListItems">
+ <div id="shoppingListLoading" class="loading-state" hidden>Loading your shopping list…</div>
+<ul class="shopping-list" id="shoppingListItems">
       <!-- checkable items injected by app.js -->
     </ul>
+
 
     <div id="shoppingListEmpty" class="empty-state" hidden>
       <p class="empty-title">Your shopping list is empty</p>
