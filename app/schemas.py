@@ -48,3 +48,25 @@ class RecipeOut(BaseModel):
 
     class Config:
         from_attributes = True
+
+
+# ---------------------------------------------------------------------------
+# Shopping List schemas
+# ---------------------------------------------------------------------------
+
+class ShoppingListItemOut(BaseModel):
+    id: int
+    name: str
+    quantity: Optional[float]
+    unit: Optional[str]
+    is_checked: bool
+    source_recipe_id: Optional[int]
+    added_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class AddToListRequest(BaseModel):
+    """Body for POST /shopping-list/from-recipe/{recipe_id}."""
+    multiplier: float = Field(default=1.0, gt=0, description="Serving multiplier: 1, 2, 4, etc.")
