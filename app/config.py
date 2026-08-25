@@ -12,6 +12,7 @@ class Settings:
     connection string via Secret Manager / env var — no code change needed.
     """
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./recipe_box.db").strip()
+    GCS_BUCKET_NAME: str = os.getenv("GCS_BUCKET_NAME", "recipe-shopping-mvp-images").strip()
 
 
 settings = Settings()
