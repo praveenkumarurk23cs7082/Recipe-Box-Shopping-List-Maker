@@ -3,17 +3,23 @@ from sqlalchemy.orm import Session
 from app import models
 
 
-def add_ingredients_to_list(db: Session, ingredients: List[models.RecipeIngredient], multiplier: float = 1.0) -> None:
+def add_ingredients_to_list(
+    db: Session,
+    ingredients: List[models.RecipeIngredient],
+    user_id: str,
+    multiplier: float = 1.0,
+) -> None:
     """
-    Consolidates recipe ingredients and adds them to the shopping list.
-    - If an unchecked item with the same name and unit (case-insensitive) already exists, its quantity is summed.
-    - Otherwise, a new shopping list item is created.
+    Consolidates recipe ingredients and adds them to the given user's shopping list.
+    - If an unchecked item with the same name and unit (case-insensitive) already
+      exists FOR THIS USER, its quantity is summed.
+    - Otherwise, a new shopping list item is created, owned by this user.
     - Wrapped in a transaction (db.commit / db.rollback on error) for safety.
     """
     try:
-        # Fetch current unchecked shopping list items to check for matches
         existing_items = db.query(models.ShoppingListItem).filter(
-            models.ShoppingListItem.is_checked == False
+            models.ShoppingListItem.is_checked == False,
+            models.ShoppingListItem.user_id == user_id,
         ).all()
 
         for ing in ingredients:
@@ -30,7 +36,6 @@ def add_ingredients_to_list(db: Session, ingredients: List[models.RecipeIngredie
                     break
 
             if match:
-                # Sum if both quantities are numbers; set to None if either is None (unscalable)
                 if match.quantity is not None and scaled_qty is not None:
                     match.quantity += scaled_qty
                 else:
@@ -42,10 +47,9 @@ def add_ingredients_to_list(db: Session, ingredients: List[models.RecipeIngredie
                     unit=ing.unit.strip() if ing.unit else None,
                     is_checked=False,
                     source_recipe_id=ing.recipe_id,
+                    user_id=user_id,
                 )
                 db.add(new_item)
-                # Add to local list so if we have duplicate ingredients in the SAME payload,
-                # they also consolidate with each other rather than creating multiple rows.
                 existing_items.append(new_item)
 
         db.commit()
