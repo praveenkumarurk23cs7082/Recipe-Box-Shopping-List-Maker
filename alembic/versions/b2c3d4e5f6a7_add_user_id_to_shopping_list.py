@@ -1,4 +1,4 @@
-"""add user_id to shopping_list_items
+﻿"""add user_id to shopping_list_items
 
 Revision ID: b2c3d4e5f6a7
 Revises: a1b2c3d4e5f6

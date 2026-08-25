@@ -1,6 +1,6 @@
 /* ===================================================================
    Recipe Box — Frontend logic (Role #4, extended with #5's servings
-   scaler + shopping list, ported to vanilla JS)
+   scaler + shopping list, #7's image upload / scan / auth)
 
    API CONTRACT — matches the real backend in Recipe-Box-Shopping-List-Maker
    (app/routers/recipes.py, app/routers/shopping_list.py, app/schemas.py)
@@ -12,36 +12,15 @@
      PUT    {API_BASE}/recipes/:id             -> 200, RecipeOut
      DELETE {API_BASE}/recipes/:id             -> 204, no body
      POST   {API_BASE}/upload/image            -> 200, { url: string }  (multipart/form-data, field name "file")
+     POST   {API_BASE}/scan/ingredients        -> 200, { lines: string[] }  (multipart/form-data, field name "file")
 
      POST   {API_BASE}/shopping-list/from-recipe/:id  -> 201, ShoppingListItemOut[]  (body: { multiplier: number })
      GET    {API_BASE}/shopping-list                  -> 200, ShoppingListItemOut[]
      PATCH  {API_BASE}/shopping-list/:itemId/check     -> 200, ShoppingListItemOut
      DELETE {API_BASE}/shopping-list                  -> 204, no body
 
-   Request body (RecipeCreate / RecipeUpdate):
-     {
-       title: string,
-       category: "breakfast" | "dinner" | "dessert",   // lowercase — matches the DB enum
-       prep_time_min: number | null,
-       base_servings: number,                          // must be > 0
-       image_url: string | null,                        // set from the /upload/image response, not typed by hand
-       ingredient_lines: string[]                       // raw textarea lines; #2's parser splits these server-side
-     }
-
-   Response body (RecipeOut) — note ingredients come back as PARSED OBJECTS,
-   not strings, because #2's parser already ran server-side:
-     {
-       id: number,
-       title: string,
-       category: "breakfast" | "dinner" | "dessert",
-       prep_time_min: number | null,
-       base_servings: number,
-       image_url: string | null,
-       created_at: string,
-       ingredients: [
-         { id, quantity: number|null, unit: string|null, name: string, raw_line: string, sort_order: number }
-       ]
-     }
+   Every request to API_BASE carries an `Authorization: Bearer <Firebase ID token>`
+   header once the user is signed in (see authFetch()).
 
    If the API isn't reachable, this falls back to local mock data (same shape
    as RecipeOut) so the UI still works standalone for demoing.
@@ -50,6 +29,17 @@
 const API_BASE = "https://recipe-backend-156431190697.asia-south1.run.app"; // live Cloud Run backend (#7's deployment)
 // Local dev fallback — uncomment this line and comment the one above if running the backend locally:
 // const API_BASE = "http://127.0.0.1:8000";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCn3zNctmuDfq1rjXzLxy-mIgbtKMrMTek",
+  authDomain: "recipe-shopping-mvp.firebaseapp.com",
+  projectId: "recipe-shopping-mvp",
+  storageBucket: "recipe-shopping-mvp.firebasestorage.app",
+  messagingSenderId: "156431190697",
+  appId: "1:156431190697:web:0aa14c624c1e61388437b8"
+};
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
 
 const CATEGORIES = [
   { value: "all", label: "All" },
@@ -112,8 +102,16 @@ let recipeIdPendingDelete = null;
 let currentImageUrl = null; // set by the file-upload handler; sent as image_url on save
 let activeDetailRecipe = null;
 let activeMultiplier = 1;
+let currentIdToken = null; // set once signed in; attached to every backend request
 
 // ---------------- DOM refs ----------------
+
+const appMain          = document.getElementById("appMain");
+const signInView       = document.getElementById("signInView");
+const userInfo         = document.getElementById("userInfo");
+const userName         = document.getElementById("userName");
+const googleSignInBtn  = document.getElementById("googleSignInBtn");
+const signOutBtn       = document.getElementById("signOutBtn");
 
 const dashboardView   = document.getElementById("dashboardView");
 const formView        = document.getElementById("formView");
@@ -140,7 +138,6 @@ const ingredientsError = document.getElementById("ingredientsError");
 const scanFileInput    = document.getElementById("scanFile");
 const scanStatus       = document.getElementById("scanStatus");
 
-
 const deleteDialog       = document.getElementById("deleteDialog");
 
 const detailTitle          = document.getElementById("detailTitle");
@@ -157,17 +154,65 @@ const shoppingListCountBadge = document.getElementById("shoppingListCount");
 const recipesLoading       = document.getElementById("recipesLoading");
 const shoppingListLoading  = document.getElementById("shoppingListLoading");
 
+// ---------------- Auth ----------------
+
+async function handleSignIn() {
+  const provider = new firebase.auth.GoogleAuthProvider();
+  try {
+    await auth.signInWithPopup(provider);
+  } catch (err) {
+    console.error(err);
+    alert("Sign-in failed. Please try again.");
+  }
+}
+
+async function handleSignOut() {
+  await auth.signOut();
+}
+
+function resetAppState() {
+  recipes = [];
+  activeFilter = "all";
+  usingMockData = false;
+  activeDetailRecipe = null;
+  showDashboard();
+  hideStatusBanner();
+  shoppingListCountBadge.hidden = true;
+}
+
+auth.onAuthStateChanged(async (user) => {
+  if (user) {
+    currentIdToken = await user.getIdToken();
+    signInView.hidden = true;
+    appMain.hidden = false;
+    userInfo.hidden = false;
+    userName.textContent = user.displayName || user.email;
+    await loadRecipes();
+    await updateShoppingListBadge();
+  } else {
+    currentIdToken = null;
+    signInView.hidden = false;
+    appMain.hidden = true;
+    userInfo.hidden = true;
+    resetAppState();
+  }
+});
+
+async function authFetch(url, options = {}) {
+  const headers = new Headers(options.headers || {});
+  if (currentIdToken) {
+    headers.set("Authorization", `Bearer ${currentIdToken}`);
+  }
+  return fetch(url, { ...options, headers });
+}
 
 // ---------------- Init ----------------
 
-document.addEventListener("DOMContentLoaded", init);
-
-async function init() {
+document.addEventListener("DOMContentLoaded", () => {
   renderFilterChips();
   wireStaticEvents();
-  await loadRecipes();
-  await updateShoppingListBadge();
-}
+});
+
 // ---------------- Data loading ----------------
 
 async function loadRecipes() {
@@ -175,7 +220,7 @@ async function loadRecipes() {
   recipeGrid.hidden = true;
   emptyState.hidden = true;
   try {
-    const res = await fetch(`${API_BASE}/recipes`);
+    const res = await authFetch(`${API_BASE}/recipes`);
     if (!res.ok) throw new Error(`GET /recipes failed: ${res.status}`);
     recipes = await res.json();
     usingMockData = false;
@@ -197,7 +242,7 @@ async function loadRecipes() {
 async function uploadImage(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/upload/image`, { method: "POST", body: formData });
+  const res = await authFetch(`${API_BASE}/upload/image`, { method: "POST", body: formData });
   if (!res.ok) throw new Error(`POST /upload/image failed: ${res.status}`);
   const data = await res.json();
   return data.url;
@@ -206,7 +251,7 @@ async function uploadImage(file) {
 async function scanIngredients(file) {
   const formData = new FormData();
   formData.append("file", file);
-  const res = await fetch(`${API_BASE}/scan/ingredients`, { method: "POST", body: formData });
+  const res = await authFetch(`${API_BASE}/scan/ingredients`, { method: "POST", body: formData });
   if (!res.ok) throw new Error(`POST /scan/ingredients failed: ${res.status}`);
   const data = await res.json();
   return data.lines;
@@ -218,7 +263,7 @@ async function createRecipe(recipe) {
     recipes.push(created);
     return created;
   }
-  const res = await fetch(`${API_BASE}/recipes`, {
+  const res = await authFetch(`${API_BASE}/recipes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(recipe)
@@ -235,7 +280,7 @@ async function updateRecipe(id, recipe) {
     if (idx !== -1) recipes[idx] = { ...recipes[idx], ...recipe, id };
     return recipes[idx];
   }
-  const res = await fetch(`${API_BASE}/recipes/${id}`, {
+  const res = await authFetch(`${API_BASE}/recipes/${id}`, {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(recipe)
@@ -249,14 +294,14 @@ async function updateRecipe(id, recipe) {
 
 async function deleteRecipe(id) {
   if (!usingMockData) {
-    const res = await fetch(`${API_BASE}/recipes/${id}`, { method: "DELETE" });
+    const res = await authFetch(`${API_BASE}/recipes/${id}`, { method: "DELETE" });
     if (!res.ok) throw new Error(`DELETE /recipes/${id} failed: ${res.status}`);
   }
   recipes = recipes.filter(r => String(r.id) !== String(id));
 }
 
 async function addRecipeToShoppingList(recipeId, multiplier) {
-  const res = await fetch(`${API_BASE}/shopping-list/from-recipe/${recipeId}`, {
+  const res = await authFetch(`${API_BASE}/shopping-list/from-recipe/${recipeId}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ multiplier })
@@ -266,19 +311,19 @@ async function addRecipeToShoppingList(recipeId, multiplier) {
 }
 
 async function fetchShoppingList() {
-  const res = await fetch(`${API_BASE}/shopping-list`);
+  const res = await authFetch(`${API_BASE}/shopping-list`);
   if (!res.ok) throw new Error(`GET /shopping-list failed: ${res.status}`);
   return res.json();
 }
 
 async function toggleShoppingItemChecked(itemId) {
-  const res = await fetch(`${API_BASE}/shopping-list/${itemId}/check`, { method: "PATCH" });
+  const res = await authFetch(`${API_BASE}/shopping-list/${itemId}/check`, { method: "PATCH" });
   if (!res.ok) throw new Error(`PATCH /shopping-list/${itemId}/check failed: ${res.status}`);
   return res.json();
 }
 
 async function clearShoppingListApi() {
-  const res = await fetch(`${API_BASE}/shopping-list`, { method: "DELETE" });
+  const res = await authFetch(`${API_BASE}/shopping-list`, { method: "DELETE" });
   if (!res.ok) throw new Error(`DELETE /shopping-list failed: ${res.status}`);
 }
 
@@ -430,7 +475,6 @@ async function handleScanFileChange() {
   }
 }
 
-
 function openFormForCreate() {
   recipeForm.reset();
   recipeIdInput.value = "";
@@ -553,6 +597,7 @@ async function updateShoppingListBadge() {
     console.warn("Couldn't refresh shopping list badge:", err.message);
   }
 }
+
 // ---------------- Shopping list view ----------------
 
 async function loadShoppingList() {
@@ -571,8 +616,6 @@ async function loadShoppingList() {
     shoppingListLoading.hidden = true;
   }
 }
-
-
 
 function renderShoppingListItems(items) {
   shoppingListItemsEl.innerHTML = "";
@@ -769,12 +812,15 @@ if (typeof structuredClone !== "function") {
 // ---------------- Wire static events ----------------
 
 function wireStaticEvents() {
+  googleSignInBtn.addEventListener("click", handleSignIn);
+  signOutBtn.addEventListener("click", handleSignOut);
+
   document.getElementById("newRecipeBtn").addEventListener("click", openFormForCreate);
   document.getElementById("emptyStateNewBtn").addEventListener("click", openFormForCreate);
   document.getElementById("backToBoardBtn").addEventListener("click", showDashboard);
   document.getElementById("cancelFormBtn").addEventListener("click", showDashboard);
   recipeForm.addEventListener("submit", handleFormSubmit);
-   imageFileInput.addEventListener("change", handleImageFileChange);
+  imageFileInput.addEventListener("change", handleImageFileChange);
   scanFileInput.addEventListener("change", handleScanFileChange);
 
   document.getElementById("cancelDeleteBtn").addEventListener("click", closeDeleteDialog);

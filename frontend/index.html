@@ -15,15 +15,30 @@
     <span class="brand-mark">RB</span>
     <h1>Recipe Box</h1>
   </div>
+  <div id="userInfo" class="user-info" hidden>
+    <span id="userName"></span>
+    <button id="signOutBtn" class="btn btn-ghost">Sign out</button>
+  </div>
   <nav class="topbar-nav">
+
         <button id="shoppingListNavBtn" class="btn btn-ghost">Shopping List <span id="shoppingListCount" class="nav-badge" hidden>0</span></button>
     <button id="newRecipeBtn" class="btn btn-primary">+ New recipe</button>
   </nav>
 </header>
 
-<main>
+<section id="signInView" class="view">
+  <div class="signin-box">
+    <span class="signin-emoji">🍳🥐🍅</span>
+    <h2>Welcome to Recipe Box</h2>
+    <p class="empty-copy">Sign in with Google to save your own recipes and build your personal shopping list.</p>
+    <button id="googleSignInBtn" class="btn btn-primary">Sign in with Google</button>
+  </div>
+</section>
+
+<main id="appMain" hidden>
 
   <!-- ============ DASHBOARD VIEW ============ -->
+
   <section id="dashboardView" class="view">
 
     <div class="filter-row" id="filterRow">
@@ -187,6 +202,9 @@
   </div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
 <script src="app.js"></script>
+
 </body>
 </html>
