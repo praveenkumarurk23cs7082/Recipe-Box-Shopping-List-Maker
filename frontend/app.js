@@ -150,6 +150,7 @@ const addToListStatus      = document.getElementById("addToListStatus");
 const shoppingListItemsEl  = document.getElementById("shoppingListItems");
 const shoppingListEmpty    = document.getElementById("shoppingListEmpty");
 const clearListDialog      = document.getElementById("clearListDialog");
+const shoppingListCountBadge = document.getElementById("shoppingListCount");
 
 // ---------------- Init ----------------
 
@@ -159,8 +160,8 @@ async function init() {
   renderFilterChips();
   wireStaticEvents();
   await loadRecipes();
+  await updateShoppingListBadge();
 }
-
 // ---------------- Data loading ----------------
 
 async function loadRecipes() {
@@ -483,6 +484,11 @@ async function handleAddToShoppingList() {
     }
     await addRecipeToShoppingList(activeDetailRecipe.id, activeMultiplier);
     addToListStatus.textContent = `Added at ${activeMultiplier}x — check the Shopping List.`;
+    addToShoppingListBtn.textContent = "Added ✓";
+    await updateShoppingListBadge();
+    setTimeout(() => {
+      addToShoppingListBtn.textContent = "Add to Shopping List";
+    }, 1500);
   } catch (err) {
     console.error(err);
     addToListStatus.textContent = "Couldn't add to the shopping list. Try again.";
@@ -491,13 +497,27 @@ async function handleAddToShoppingList() {
   }
 }
 
+async function updateShoppingListBadge() {
+  try {
+    const items = await fetchShoppingList();
+    if (items.length > 0) {
+      shoppingListCountBadge.textContent = String(items.length);
+      shoppingListCountBadge.hidden = false;
+    } else {
+      shoppingListCountBadge.hidden = true;
+    }
+  } catch (err) {
+    console.warn("Couldn't refresh shopping list badge:", err.message);
+  }
+}
 // ---------------- Shopping list view ----------------
 
 async function loadShoppingList() {
   shoppingListItemsEl.innerHTML = "";
-  try {
+    try {
     const items = await fetchShoppingList();
     renderShoppingListItems(items);
+    await updateShoppingListBadge();
   } catch (err) {
     console.error(err);
     showStatusBanner("Couldn't load the shopping list. Check the connection and try again.", "error");
