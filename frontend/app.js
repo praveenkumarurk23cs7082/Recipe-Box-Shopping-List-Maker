@@ -570,11 +570,11 @@ async function handleAddToShoppingList() {
       throw new Error("Shopping list requires the live API — mock mode is read-only for this.");
     }
     await addRecipeToShoppingList(activeDetailRecipe.id, activeMultiplier);
-    addToListStatus.textContent = `Added at ${activeMultiplier}x — check the Shopping List.`;
+    addToListStatus.textContent = `Added at ${activeMultiplier}x — check the Cart.`;
     addToShoppingListBtn.textContent = "Added ✓";
     await updateShoppingListBadge();
     setTimeout(() => {
-      addToShoppingListBtn.textContent = "Add to Shopping List";
+      addToShoppingListBtn.textContent = "Add to Cart";
     }, 1500);
   } catch (err) {
     console.error(err);
@@ -587,8 +587,9 @@ async function handleAddToShoppingList() {
 async function updateShoppingListBadge() {
   try {
     const items = await fetchShoppingList();
-    if (items.length > 0) {
-      shoppingListCountBadge.textContent = String(items.length);
+    const remaining = items.filter(item => !item.is_checked).length;
+    if (remaining > 0) {
+      shoppingListCountBadge.textContent = String(remaining);
       shoppingListCountBadge.hidden = false;
     } else {
       shoppingListCountBadge.hidden = true;
