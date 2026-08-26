@@ -21,7 +21,7 @@
   </div>
   <nav class="topbar-nav">
 
-        <button id="shoppingListNavBtn" class="btn btn-ghost">Shopping List <span id="shoppingListCount" class="nav-badge" hidden>0</span></button>
+        <button id="shoppingListNavBtn" class="btn btn-ghost">🛒 Cart <span id="shoppingListCount" class="nav-badge" hidden>0</span></button>
     <button id="newRecipeBtn" class="btn btn-primary">+ New recipe</button>
   </nav>
 </header>
@@ -148,30 +148,30 @@
     </ul>
 
     <div class="form-actions">
-      <button type="button" class="btn btn-primary" id="addToShoppingListBtn">Add to Shopping List</button>
+      <button type="button" class="btn btn-primary" id="addToShoppingListBtn">Add to Cart</button>
     </div>
     <span class="field-hint" id="addToListStatus"></span>
 
   </section>
 
-  <!-- ============ SHOPPING LIST VIEW ============ -->
+  <!-- ============ 🛒 Cart VIEW ============ -->
   <section id="shoppingListView" class="view" hidden>
 
     <button class="back-link" id="backToBoardFromListBtn">&larr; Back to recipe box</button>
 
     <div class="form-actions">
-      <h2>Shopping List</h2>
+      <h2>🛒 Cart</h2>
       <button type="button" class="btn btn-ghost" id="clearListBtn">Clear list</button>
     </div>
- <div id="shoppingListLoading" class="loading-state" hidden>Loading your shopping list…</div>
+ <div id="shoppingListLoading" class="loading-state" hidden>Loading your Cart…</div>
 <ul class="shopping-list" id="shoppingListItems">
       <!-- checkable items injected by app.js -->
     </ul>
 
 
     <div id="shoppingListEmpty" class="empty-state" hidden>
-      <p class="empty-title">Your shopping list is empty</p>
-      <p class="empty-copy">Open a recipe and tap "Add to Shopping List" to fill it up.</p>
+      <p class="empty-title">Your 🛒 Cart is empty</p>
+      <p class="empty-copy">Open a recipe and tap "Add to Cart" to fill it up.</p>
     </div>
 
   </section>
