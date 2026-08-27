@@ -936,9 +936,9 @@ function updateAllBadges(count) {
 // ---------------- Stats ----------------
 
 function updateStats(recipeCount, cartCount) {
-  const rc = recipeCount !== undefined ? recipeCount : recipes.length;
+  const rc = recipeCount != null ? recipeCount : recipes.length;
   if (statRecipeCount) statRecipeCount.textContent = String(rc);
-  if (cartCount !== undefined && statCartCount) statCartCount.textContent = String(cartCount);
+  if (cartCount != null && statCartCount) statCartCount.textContent = String(cartCount);
   if (statCategoryCount) {
     const cats = new Set(recipes.map(r => r.category));
     statCategoryCount.textContent = String(cats.size);
