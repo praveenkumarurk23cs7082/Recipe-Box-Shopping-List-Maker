@@ -3,7 +3,7 @@
    Guest Mode + Complete UI Redesign Wiring
 =================================================================== */
 
-const API_BASE = "https://recipe-backend-156431190697.asia-south1.run.app"; 
+const API_BASE = "https://recipe-backend-156431190697.asia-south1.run.app";
 // const API_BASE = "http://127.0.0.1:8000";
 
 const MOCK_RECIPES = [
@@ -60,7 +60,7 @@ const MOCK_RECIPES = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCn3zNctmuDfq1rjXzLxy-mIgbtKMrMTek",
+  apiKey: "AIzaSyCn•••••••••••••••••••••••••••••••",
   authDomain: "recipe-shopping-mvp.firebaseapp.com",
   projectId: "recipe-shopping-mvp",
   storageBucket: "recipe-shopping-mvp.firebasestorage.app",
@@ -254,13 +254,13 @@ auth.onAuthStateChanged(async (user) => {
     authState = 'authenticated';
     currentUser = user;
     currentIdToken = await user.getIdToken();
-    
+
     if (loginPage) loginPage.hidden = true;
     appMain.hidden = false;
-    
+
     if (userProfile) userProfile.hidden = false;
     if (mobileUserProfile) mobileUserProfile.hidden = false;
-    
+
     if (navRecipes) navRecipes.hidden = false;
     if (navAddRecipe) navAddRecipe.hidden = false;
     if (navShopping) navShopping.hidden = false;
@@ -280,17 +280,17 @@ auth.onAuthStateChanged(async (user) => {
 
     updateGreeting(displayName);
     showDashboard();
-    
+
     await loadRecipes();
     await updateShoppingListBadge();
   } else {
     authState = 'guest';
     currentUser = null;
     currentIdToken = null;
-    
+
     if (loginPage) loginPage.hidden = false;
     appMain.hidden = true;
-    
+
     resetAppState();
   }
 });
@@ -471,14 +471,14 @@ function getFilteredRecipes() {
 function renderRecipes() {
   const visible = getFilteredRecipes();
   const grid = recipeGrid;
-  
+
   if (!grid) return;
 
   grid.innerHTML = "";
-  
+
   if (emptyState) emptyState.hidden = true;
   if (noSearchResults) noSearchResults.hidden = true;
-  
+
   if (visible.length === 0) {
     grid.hidden = true;
     if (searchQuery && recipes.length > 0) {
@@ -568,7 +568,7 @@ function buildRecipeCard(recipe) {
     e.stopPropagation();
     openRecipeDetail(recipe);
   });
-  
+
   actions.appendChild(viewBtn);
 
   if (authState === 'authenticated') {
@@ -781,7 +781,7 @@ function openRecipeDetail(recipe) {
   activeMultiplier = 1;
 
   const isGuest = authState === 'guest';
-  
+
   detailTitle.textContent = recipe.title;
 
   const prepDisplay = recipe.prep_time_min == null ? "—" : `${recipe.prep_time_min} min`;
@@ -868,7 +868,7 @@ function handleMultiplierClick(event) {
   const btn = event.target.closest("[data-multiplier]");
   if (!btn) return;
   activeMultiplier = Number(btn.dataset.multiplier);
-  
+
   if (multiplierGroup) {
     Array.from(multiplierGroup.children).forEach(c => {
       c.classList.toggle("active", c === btn);
@@ -910,8 +910,9 @@ async function handleAddToShoppingList() {
 async function updateShoppingListBadge() {
   try {
     const items = await fetchShoppingList();
-    updateAllBadges(items.length);
-    updateStats(null, items.length);
+    const remaining = items.filter(item => !item.is_checked).length;
+    updateAllBadges(remaining);
+    updateStats(null, remaining);
   } catch (err) {
     console.warn("Couldn't refresh shopping list badge:", err.message);
   }
@@ -970,14 +971,14 @@ async function loadShoppingList() {
   try {
     const items = await fetchShoppingList();
     renderShoppingListItems(items);
-    updateAllBadges(items.length);
-    updateStats(null, items.length);
+    const remaining = items.filter(i => !i.is_checked).length;
+    updateAllBadges(remaining);
+    updateStats(null, remaining);
 
     if (shoppingSubtitle) {
       if (items.length > 0) {
-        const unchecked = items.filter(i => !i.is_checked).length;
-        shoppingSubtitle.textContent = unchecked > 0
-          ? `${unchecked} item${unchecked !== 1 ? "s" : ""} remaining`
+        shoppingSubtitle.textContent = remaining > 0
+          ? `${remaining} item${remaining !== 1 ? "s" : ""} remaining`
           : "All items checked off!";
       } else {
         shoppingSubtitle.textContent = "Everything you need for your next meal.";
@@ -1265,11 +1266,11 @@ if (typeof structuredClone !== "function") {
 // ---------------- Wire static events ----------------
 
 function wireStaticEvents() {
-  
+
   // Auth Triggers
   signOutBtn.addEventListener("click", handleSignOut);
   if (mobileSignOutBtn) mobileSignOutBtn.addEventListener("click", handleSignOut);
-  
+
   const headerUserMenu = document.getElementById("headerUserMenu");
   if (headerUserMenu) {
     headerUserMenu.addEventListener("click", handleSignOut);
@@ -1282,7 +1283,7 @@ function wireStaticEvents() {
     const el = document.getElementById(id);
     if (el) el.addEventListener("click", handleSignIn);
   });
-  
+
   const authPromptCancelBtn = document.getElementById("authPromptCancelBtn");
   if (authPromptCancelBtn) authPromptCancelBtn.addEventListener("click", hideAuthPrompt);
 
@@ -1298,7 +1299,7 @@ function wireStaticEvents() {
   document.getElementById("emptyStateNewBtn").addEventListener("click", openFormWrapped);
   if (navAddRecipe) navAddRecipe.addEventListener("click", openFormWrapped);
   if (mobileNavAdd) mobileNavAdd.addEventListener("click", openFormWrapped);
-  
+
   if (imageFileInput) imageFileInput.addEventListener("change", () => requireAuth(handleImageFileChange));
   if (scanFileInput) scanFileInput.addEventListener("change", () => requireAuth(handleScanFileChange));
 
@@ -1312,7 +1313,7 @@ function wireStaticEvents() {
   document.getElementById("backToBoardBtn").addEventListener("click", showDashboard);
   document.getElementById("cancelFormBtn").addEventListener("click", showDashboard);
   recipeForm.addEventListener("submit", (e) => requireAuth(() => handleFormSubmit(e)));
-  
+
   if (removeImageBtn) removeImageBtn.addEventListener("click", () => requireAuth(handleRemoveImage));
   if (imageUploadPlaceholder) imageUploadPlaceholder.addEventListener("click", () => requireAuth(() => imageFileInput.click()));
 
@@ -1332,7 +1333,7 @@ function wireStaticEvents() {
   document.getElementById("shoppingListNavBtn").addEventListener("click", openShoppingListWrapped);
   if (navShopping) navShopping.addEventListener("click", openShoppingListWrapped);
   if (mobileNavShopping) mobileNavShopping.addEventListener("click", openShoppingListWrapped);
-  
+
   document.getElementById("backToBoardFromListBtn").addEventListener("click", showDashboard);
   document.getElementById("clearListBtn").addEventListener("click", () => requireAuth(openClearListDialog));
   document.getElementById("cancelClearListBtn").addEventListener("click", closeClearListDialog);
