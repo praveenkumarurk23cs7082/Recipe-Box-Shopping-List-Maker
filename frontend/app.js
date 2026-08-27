@@ -60,7 +60,7 @@ const MOCK_RECIPES = [
 ];
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCn•••••••••••••••••••••••••••••••",
+  apiKey: "AIzaSyCn3zNctmuDfq1rjXzLxy-mIgbtKMrMTek",
   authDomain: "recipe-shopping-mvp.firebaseapp.com",
   projectId: "recipe-shopping-mvp",
   storageBucket: "recipe-shopping-mvp.firebasestorage.app",
