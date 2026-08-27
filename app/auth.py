@@ -22,3 +22,21 @@ def get_current_user_id(request: Request) -> str:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
     return decoded["uid"]
+
+
+def get_optional_user_id(request: Request) -> str | None:
+    """
+    FastAPI dependency — like get_current_user_id but returns None for
+    unauthenticated requests instead of raising 401.
+    Used for public read endpoints that work for both guests and signed-in users.
+    """
+    authorization = request.headers.get("Authorization", "")
+    if not authorization.startswith("Bearer "):
+        return None
+
+    token = authorization.removeprefix("Bearer ")
+    try:
+        decoded = firebase_auth.verify_id_token(token)
+        return decoded["uid"]
+    except Exception:
+        return None

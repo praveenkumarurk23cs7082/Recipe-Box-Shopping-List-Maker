@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from app import models, schemas
-from app.auth import get_current_user_id
+from app.auth import get_current_user_id, get_optional_user_id
 from app.database import get_db
 from app.services.ingredient_parser import parse_ingredient_line
 
@@ -55,9 +55,17 @@ def create_recipe(
 def list_recipes(
     category: Optional[models.Category] = Query(default=None),
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_current_user_id),
+    user_id: Optional[str] = Depends(get_optional_user_id),
 ):
-    query = db.query(models.Recipe).filter(models.Recipe.created_by == user_id)
+    """
+    Public endpoint: authenticated users see only their own recipes;
+    unauthenticated guests see all recipes (read-only discovery).
+    """
+    query = db.query(models.Recipe)
+    if user_id:
+        # Authenticated: show only this user's recipes
+        query = query.filter(models.Recipe.created_by == user_id)
+    # Guests: no filter — all recipes are visible
     if category:
         query = query.filter(models.Recipe.category == category)
     return query.order_by(models.Recipe.created_at.desc()).all()

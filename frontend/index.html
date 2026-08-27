@@ -3,208 +3,573 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Recipe Box</title>
+<title>Recipe Box — Discover &amp; Save Recipes</title>
+<meta name="description" content="Browse recipes, scale ingredients, and build your grocery shopping list — all in one beautiful place.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Mono:wght@500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
-<header class="topbar">
-  <div class="brand">
-    <span class="brand-mark">RB</span>
-    <h1>Recipe Box</h1>
+<!-- ============================================================
+     LOADING OVERLAY (shown while Firebase initialises)
+     ============================================================ -->
+<div id="appLoadingOverlay" class="app-loading-overlay">
+  <div class="loading-spinner-wrap">
+    <div class="loading-logo-icon">
+      <svg width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="14" fill="#526B52"/>
+        <path d="M13 14h22M13 20h16M13 26h19M13 32h12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="35" cy="31" r="7" fill="#FAF8F3" stroke="#526B52" stroke-width="1.5"/>
+        <path d="M32 31h6M35 28v6" stroke="#526B52" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="loading-dots">
+      <span></span><span></span><span></span>
+    </div>
   </div>
-  <div id="userInfo" class="user-info" hidden>
-    <span id="userName"></span>
-    <button id="signOutBtn" class="btn btn-ghost">Sign out</button>
-  </div>
-  <nav class="topbar-nav">
+</div>
 
-        <button id="shoppingListNavBtn" class="btn btn-ghost">🛒 Cart <span id="shoppingListCount" class="nav-badge" hidden>0</span></button>
-    <button id="newRecipeBtn" class="btn btn-primary">+ New recipe</button>
+<!-- ============================================================
+     LOGIN PAGE (shown to guests)
+     ============================================================ -->
+<div id="loginPage" class="login-page" hidden>
+  <div class="login-bg-image"></div>
+  <div class="login-overlay"></div>
+  <div class="login-card">
+    <div class="login-brand">
+      <svg width="42" height="42" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect width="48" height="48" rx="14" fill="#526B52"/>
+        <path d="M13 14h22M13 20h16M13 26h19M13 32h12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+        <circle cx="35" cy="31" r="7" fill="#FAF8F3" stroke="#526B52" stroke-width="1.5"/>
+        <path d="M32 31h6M35 28v6" stroke="#526B52" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>
+      <h2>Recipe Box</h2>
+    </div>
+    <div class="login-content">
+      <h1>Discover something <em>delicious.</em></h1>
+      <p>Save your favourite recipes, explore new dishes, and build your smart shopping list.</p>
+    </div>
+    <div class="login-actions">
+      <button class="btn btn-primary btn-lg" id="loginPageSignInBtn" style="width: 100%; justify-content: center;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+        Sign in to get started
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     APP SHELL (shown to authenticated users)
+     ============================================================ -->
+<div id="appMain" class="app-shell" hidden>
+
+  <!-- ===== SIDEBAR (desktop) ===== -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-inner">
+
+      <div class="sidebar-brand">
+        <svg width="34" height="34" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <rect width="48" height="48" rx="14" fill="#526B52"/>
+          <path d="M13 14h22M13 20h16M13 26h19M13 32h12" stroke="#fff" stroke-width="2.4" stroke-linecap="round"/>
+          <circle cx="35" cy="31" r="7" fill="#FAF8F3" stroke="#526B52" stroke-width="1.5"/>
+          <path d="M32 31h6M35 28v6" stroke="#526B52" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <span class="sidebar-wordmark">Recipe Box</span>
+      </div>
+
+      <nav class="sidebar-nav" aria-label="Main navigation">
+        <button class="nav-item active" id="navHome" data-view="dashboard">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span>Home</span>
+        </button>
+        <button class="nav-item" id="navRecipes" data-view="dashboard">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+          <span>My Recipes</span>
+        </button>
+        <button class="nav-item nav-item-add" id="navAddRecipe" data-view="form">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v8M8 12h8"/></svg>
+          <span>Add Recipe</span>
+        </button>
+        <button class="nav-item" id="navShopping" data-view="shopping">
+          <svg class="nav-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span>Shopping List</span>
+          <span id="shoppingListCount" class="nav-badge" hidden>0</span>
+        </button>
+      </nav>
+
+      <div id="userProfile" class="user-profile" hidden>
+        <div class="user-avatar" id="userAvatar">P</div>
+        <div class="user-info">
+          <div class="user-name" id="userName">Praveen</div>
+          <button class="btn-link" id="signOutBtn" style="padding: 0; font-size: 12px; color: var(--ink-light);">Sign out</button>
+        </div>
+      </div>
+
+    </div>
+  </aside>
+
+  <!-- ===== MAIN CONTENT ===== -->
+  <div class="content-wrapper">
+
+    <!-- === TOP HEADER === -->
+    <header class="app-header">
+      <div class="header-left">
+        <button class="sidebar-toggle" id="sidebarToggle" aria-label="Toggle navigation">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+        <h2 class="header-title" id="headerTitle">Home</h2>
+      </div>
+      <div class="header-center" id="headerSearch">
+        <div class="search-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" class="search-input" placeholder="Search recipes…" autocomplete="off">
+        </div>
+      </div>
+      <div class="header-right">
+        <button class="header-icon-btn" id="shoppingListNavBtn" aria-label="Open shopping list">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+          <span id="headerCartBadge" class="header-cart-badge" hidden></span>
+        </button>
+        <button class="header-avatar-btn" id="headerUserMenu" aria-label="User menu">
+          <div class="header-avatar" id="headerAvatar">U</div>
+        </button>
+      </div>
+    </header>
+
+    <!-- === VIEWS === -->
+    <main class="app-content">
+
+      <!-- ======== DASHBOARD VIEW ======== -->
+      <section id="dashboardView" class="view active">
+
+        <div class="dashboard-header" id="dashboardHeader">
+          <div class="dashboard-greeting">
+            <h1 id="greetingText">Welcome back 👋</h1>
+            <p class="greeting-sub" id="greetingSub">What's cooking today?</p>
+          </div>
+          <div class="dashboard-actions">
+            <button id="newRecipeBtn" class="btn btn-primary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add Recipe
+            </button>
+          </div>
+        </div>
+
+        <div id="statusBanner" class="status-banner" hidden></div>
+
+        <!-- Stats row -->
+        <div class="stats-row" id="statsRow">
+          <div class="stat-card">
+            <span class="stat-value" id="statRecipeCount">—</span>
+            <span class="stat-label">Recipes saved</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statCartCount">—</span>
+            <span class="stat-label">Shopping items</span>
+          </div>
+          <div class="stat-card">
+            <span class="stat-value" id="statCategoryCount">—</span>
+            <span class="stat-label">Categories</span>
+          </div>
+        </div>
+
+        <!-- Filter chips -->
+        <div class="section-header">
+          <span class="section-title">My Recipes</span>
+          <div class="filter-row" id="filterRow"></div>
+        </div>
+
+        <!-- Loading -->
+        <div id="recipesLoading" class="loading-state" hidden>
+          <div class="skeleton-grid">
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line w80"></div><div class="skeleton-line w50"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line w70"></div><div class="skeleton-line w40"></div></div>
+            <div class="skeleton-card"><div class="skeleton-img"></div><div class="skeleton-line w90"></div><div class="skeleton-line w60"></div></div>
+          </div>
+        </div>
+
+        <!-- Recipe grid -->
+        <div id="recipeGrid" class="recipe-grid" hidden></div>
+
+        <!-- Empty state -->
+        <div id="emptyState" class="empty-state" hidden>
+          <div class="empty-illustration">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="40" cy="40" r="40" fill="#E8EFE7"/>
+              <path d="M24 28h32M24 36h24M24 44h28M24 52h18" stroke="#526B52" stroke-width="2.5" stroke-linecap="round"/>
+              <circle cx="54" cy="52" r="10" fill="#FAF8F3" stroke="#526B52" stroke-width="2"/>
+              <path d="M51 52h6M54 49v6" stroke="#526B52" stroke-width="2" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">Your recipe box is waiting.</h2>
+          <p class="empty-copy">Save your first recipe and start building your personal cookbook.</p>
+          <button class="btn btn-primary" id="emptyStateNewBtn">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Your First Recipe
+          </button>
+        </div>
+
+        <!-- No search results -->
+        <div id="noSearchResults" class="empty-state" hidden>
+          <div class="empty-illustration">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+              <circle cx="40" cy="40" r="40" fill="#F2EDE4"/>
+              <circle cx="36" cy="36" r="14" stroke="#C87555" stroke-width="2.5" fill="none"/>
+              <line x1="46" y1="46" x2="58" y2="58" stroke="#C87555" stroke-width="2.5" stroke-linecap="round"/>
+              <line x1="30" y1="36" x2="42" y2="36" stroke="#C87555" stroke-width="2.5" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">No recipes found.</h2>
+          <p class="empty-copy">Try a different search or browse all recipes.</p>
+        </div>
+
+      </section>
+
+      <!-- ======== FORM VIEW (create / edit) ======== -->
+      <section id="formView" class="view" hidden>
+
+        <div class="view-header">
+          <button class="back-btn" id="backToBoardBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back
+          </button>
+          <h1 id="formHeading" class="view-title">Create a New Recipe</h1>
+          <p class="view-subtitle">Save a recipe to your personal cookbook.</p>
+        </div>
+
+        <form id="recipeForm" novalidate class="recipe-form">
+          <input type="hidden" id="recipeId">
+
+          <div class="form-layout">
+
+            <!-- LEFT: Recipe Details -->
+            <div class="form-col-main">
+
+              <div class="form-section">
+                <h3 class="form-section-title">Recipe Details</h3>
+
+                <div class="field">
+                  <label for="title">Recipe Title <span class="required">*</span></label>
+                  <input type="text" id="title" name="title" placeholder="e.g. Weeknight Chicken Stir-Fry" required maxlength="120">
+                  <span class="field-error" id="titleError"></span>
+                </div>
+
+                <div class="field-row">
+                  <div class="field">
+                    <label for="category">Category <span class="required">*</span></label>
+                    <div class="select-wrap">
+                      <select id="category" name="category" required>
+                        <option value="" disabled selected>Choose one</option>
+                        <option value="breakfast">🌅 Breakfast</option>
+                        <option value="dinner">🍽 Dinner</option>
+                        <option value="dessert">🍰 Dessert</option>
+                      </select>
+                      <svg class="select-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                    </div>
+                  </div>
+                  <div class="field">
+                    <label for="prepTime">Prep Time (minutes)</label>
+                    <input type="number" id="prepTime" name="prepTime" min="0" max="999" placeholder="e.g. 30">
+                  </div>
+                  <div class="field">
+                    <label for="servings">Servings <span class="required">*</span></label>
+                    <input type="number" id="servings" name="servings" min="1" max="99" placeholder="e.g. 4" required>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Ingredient Scan -->
+              <div class="form-section scan-section">
+                <div class="scan-header">
+                  <div>
+                    <h3 class="form-section-title">
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="7" width="10" height="10" rx="1"/></svg>
+                      Smart Ingredient Scan
+                    </h3>
+                    <p class="form-section-sub">Upload a photo of your recipe — AI will extract the ingredients.</p>
+                  </div>
+                  <label class="btn btn-outline scan-btn-label" for="scanFile">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    Scan Photo
+                  </label>
+                </div>
+                <input type="file" id="scanFile" accept="image/*" class="file-input-hidden">
+                <span class="field-hint scan-status" id="scanStatus"></span>
+              </div>
+
+              <!-- Ingredients -->
+              <div class="form-section">
+                <h3 class="form-section-title">Ingredients</h3>
+                <p class="form-section-sub">One ingredient per line — e.g. "2 cups flour"</p>
+                <div class="field">
+                  <textarea id="ingredients" name="ingredients" rows="9" placeholder="2 cups flour&#10;1 tsp salt&#10;3 large eggs&#10;1 cup milk" required></textarea>
+                  <span class="field-error" id="ingredientsError"></span>
+                </div>
+              </div>
+
+            </div>
+
+            <!-- RIGHT: Image Upload -->
+            <div class="form-col-side">
+              <div class="form-section">
+                <h3 class="form-section-title">Recipe Photo</h3>
+                <p class="form-section-sub">Add a photo to make your recipe stand out.</p>
+
+                <div class="image-uploader" id="imageUploader">
+                  <input type="file" id="imageFile" accept="image/*" class="file-input-hidden">
+                  <img id="imagePreview" class="image-preview-img" alt="Recipe preview" style="display:none">
+                  <div class="image-upload-placeholder" id="imageUploadPlaceholder">
+                    <div class="upload-icon-wrap">
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                    <p class="upload-title">Add recipe photo</p>
+                    <p class="upload-sub">JPG, PNG, or WEBP</p>
+                    <label class="btn btn-outline upload-choose-btn" for="imageFile">Choose Image</label>
+                  </div>
+                  <div class="image-preview-overlay" id="imagePreviewOverlay" style="display:none">
+                    <label class="btn btn-sm btn-outline" for="imageFile">Replace</label>
+                    <button type="button" class="btn btn-sm btn-ghost-danger" id="removeImageBtn">Remove</button>
+                  </div>
+                </div>
+                <span class="field-hint" id="imageUploadStatus"></span>
+              </div>
+            </div>
+
+          </div><!-- /form-layout -->
+
+          <div class="form-footer">
+            <button type="button" class="btn btn-ghost" id="cancelFormBtn">Cancel</button>
+            <button type="submit" class="btn btn-primary" id="saveBtn">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+              Save Recipe
+            </button>
+          </div>
+
+        </form>
+
+      </section>
+
+      <!-- ======== RECIPE DETAIL VIEW (authenticated) ======== -->
+      <section id="detailView" class="view" hidden>
+
+        <div class="view-header detail-view-header">
+          <button class="back-btn" id="backToBoardFromDetailBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Recipes
+          </button>
+          <div class="detail-header-actions">
+            <button class="btn btn-icon-only" id="editRecipeBtn" title="Edit recipe">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            </button>
+            <button class="btn btn-icon-only btn-icon-danger" id="deleteRecipeBtn" title="Delete recipe">
+              <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="detail-layout">
+          <!-- Left: Image -->
+          <div class="detail-col-image">
+            <div class="detail-image-wrap" id="detailImageWrap">
+              <div class="detail-image-placeholder" id="detailImagePlaceholder">
+                <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round" opacity="0.3"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <img id="detailImage" class="detail-image" alt="" style="display:none">
+            </div>
+          </div>
+          <!-- Right: Info -->
+          <div class="detail-col-info">
+            <h1 id="detailTitle" class="detail-title"></h1>
+            <div class="detail-meta-chips" id="detailMeta"></div>
+            <!-- Serving scaler -->
+            <div class="scaler-section">
+              <p class="scaler-label">Scale servings</p>
+              <div class="multiplier-group" id="multiplierGroup">
+                <button type="button" class="scale-btn active" data-multiplier="1">1×</button>
+                <button type="button" class="scale-btn" data-multiplier="2">2×</button>
+                <button type="button" class="scale-btn" data-multiplier="4">4×</button>
+              </div>
+            </div>
+            <!-- Ingredients -->
+            <div class="ingredients-section">
+              <h2 class="ingredients-heading">Ingredients</h2>
+              <ul class="detail-ingredient-list" id="detailIngredientList"></ul>
+            </div>
+            <!-- CTA -->
+            <div class="detail-cta">
+              <button type="button" class="btn btn-primary btn-full" id="addToShoppingListBtn">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+                Add to Shopping List
+              </button>
+              <span class="field-hint" id="addToListStatus"></span>
+            </div>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- ======== SHOPPING LIST VIEW ======== -->
+      <section id="shoppingListView" class="view" hidden>
+
+        <div class="view-header">
+          <button class="back-btn" id="backToBoardFromListBtn">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Back to Recipes
+          </button>
+          <div class="shopping-header-row">
+            <div>
+              <h1 class="view-title">Shopping List</h1>
+              <p class="view-subtitle" id="shoppingSubtitle">Everything you need for your next meal.</p>
+            </div>
+            <button type="button" class="btn btn-ghost btn-danger-ghost" id="clearListBtn">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+              Clear List
+            </button>
+          </div>
+        </div>
+
+        <!-- Loading -->
+        <div id="shoppingListLoading" class="loading-state" hidden>
+          <div class="skeleton-list">
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+            <div class="skeleton-item"></div>
+          </div>
+        </div>
+
+        <!-- Items -->
+        <ul class="shopping-list" id="shoppingListItems" hidden></ul>
+
+        <!-- Empty state -->
+        <div id="shoppingListEmpty" class="empty-state" hidden>
+          <div class="empty-illustration">
+            <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+              <circle cx="40" cy="40" r="40" fill="#E8EFE7"/>
+              <path d="M28 24 24 28v22a3 3 0 0 0 3 3h26a3 3 0 0 0 3-3V28l-4-4z" stroke="#526B52" stroke-width="2.2" fill="none" stroke-linejoin="round"/>
+              <line x1="24" y1="28" x2="56" y2="28" stroke="#526B52" stroke-width="2.2"/>
+              <path d="M46 35a6 6 0 0 1-12 0" stroke="#526B52" stroke-width="2.2" fill="none" stroke-linecap="round"/>
+            </svg>
+          </div>
+          <h2 class="empty-title">Your shopping list is empty.</h2>
+          <p class="empty-copy">Open a recipe, scale the ingredients, and tap "Add to Shopping List".</p>
+          <button class="btn btn-primary" id="browseRecipesBtn">Browse Recipes</button>
+        </div>
+
+      </section>
+
+    </main>
+  </div><!-- /content-wrapper -->
+
+  <!-- ===== MOBILE BOTTOM NAV ===== -->
+  <nav class="mobile-nav" aria-label="Mobile navigation">
+    <button class="mobile-nav-item active" id="mobileNavHome">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      <span>Home</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavRecipes">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/></svg>
+      <span>Recipes</span>
+    </button>
+    <button class="mobile-nav-item mobile-nav-add" id="mobileNavAdd">
+      <div class="mobile-nav-add-circle">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+      </div>
+      <span>Add</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavShopping">
+      <div class="mobile-nav-shopping-wrap">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        <span id="mobileCartBadge" class="mobile-cart-badge" hidden></span>
+      </div>
+      <span>List</span>
+    </button>
+    <button class="mobile-nav-item" id="mobileNavProfile">
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span>Profile</span>
+    </button>
   </nav>
-</header>
 
-<section id="signInView" class="view">
-  <div class="signin-box">
-    <span class="signin-emoji">🍳🥐🍅</span>
-    <h2>Welcome to Recipe Box</h2>
-    <p class="empty-copy">Sign in with Google to save your own recipes and build your personal shopping list.</p>
-    <button id="googleSignInBtn" class="btn btn-primary">Sign in with Google</button>
+  <!-- Mobile profile panel -->
+  <div class="mobile-profile-panel" id="mobileProfilePanel" hidden>
+    <div class="mobile-profile-inner" id="mobileUserProfile">
+      <div class="mobile-profile-avatar" id="mobileProfileAvatar">U</div>
+      <span class="mobile-profile-name" id="mobileProfileName"></span>
+      <button class="btn btn-ghost" id="mobileSignOutBtn">Sign out</button>
+    </div>
   </div>
-</section>
 
-<main id="appMain" hidden>
+</div><!-- /app-shell -->
 
-  <!-- ============ DASHBOARD VIEW ============ -->
+<!-- ============================================================
+     MODALS
+     ============================================================ -->
 
-  <section id="dashboardView" class="view">
-
-    <div class="filter-row" id="filterRow">
-      <!-- chips injected by app.js: All / Breakfast / Dinner / Dessert -->
+<!-- Auth Prompt Modal — shown when guests attempt protected actions -->
+<div id="authPromptModal" class="modal-overlay" hidden>
+  <div class="modal auth-prompt-modal" role="dialog" aria-modal="true" aria-labelledby="authPromptTitle">
+    <div class="auth-prompt-icon">
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
     </div>
-
-    <div id="statusBanner" class="status-banner" hidden></div>
-
-    <div id="recipesLoading" class="loading-state" hidden>Loading recipes…</div>
-
-
-
-    <div id="recipeGrid" class="recipe-grid">
-      <!-- recipe cards injected by app.js -->
-    </div>
-
-    <div id="emptyState" class="empty-state" hidden>
-      <p class="empty-title">No recipes yet</p>
-      <p class="empty-copy">Add your first recipe and it'll show up here as a card in the box.</p>
-      <button class="btn btn-primary" id="emptyStateNewBtn">+ New recipe</button>
-    </div>
-
-  </section>
-
-  <!-- ============ FORM VIEW (create / edit) ============ -->
-  <section id="formView" class="view" hidden>
-
-    <button class="back-link" id="backToBoardBtn">&larr; Back to recipe box</button>
-
-    <h2 id="formHeading">New recipe</h2>
-
-    <form id="recipeForm" novalidate>
-      <input type="hidden" id="recipeId">
-
-      <div class="field">
-        <label for="title">Title</label>
-        <input type="text" id="title" name="title" placeholder="e.g. Weeknight Chicken Stir-Fry" required maxlength="120">
-        <span class="field-error" id="titleError"></span>
-      </div>
-
-      <div class="field">
-        <label for="imageFile">Recipe photo (optional)</label>
-        <input type="file" id="imageFile" accept="image/*">
-        <span class="field-hint" id="imageUploadStatus"></span>
-        <img id="imagePreview" class="recipe-photo" style="display:none; margin-top:8px;" alt="Preview">
-      </div>
-<div class="field">
-        <label for="scanFile">Scan ingredients from a photo (optional)</label>
-        <input type="file" id="scanFile" accept="image/*">
-        <span class="field-hint" id="scanStatus"></span>
-      </div>
-
-
-      <div class="field-row">
-        <div class="field">
-          <label for="category">Category</label>
-          <select id="category" name="category" required>
-            <option value="" disabled selected>Choose one</option>
-            <option value="breakfast">Breakfast</option>
-            <option value="dinner">Dinner</option>
-            <option value="dessert">Dessert</option>
-          </select>
-        </div>
-
-        <div class="field">
-          <label for="prepTime">Prep time (minutes)</label>
-          <input type="number" id="prepTime" name="prepTime" min="0" max="999" placeholder="20" required>
-        </div>
-
-        <div class="field">
-          <label for="servings">Servings</label>
-          <input type="number" id="servings" name="servings" min="1" max="99" placeholder="4" required>
-        </div>
-      </div>
-
-      <div class="field">
-        <label for="ingredients">Ingredients</label>
-        <span class="field-hint">One ingredient per line — e.g. "2 cups flour"</span>
-        <textarea id="ingredients" name="ingredients" rows="8" placeholder="2 cups flour&#10;1 tsp salt&#10;3 large eggs" required></textarea>
-        <span class="field-error" id="ingredientsError"></span>
-      </div>
-
-      <div class="form-actions">
-        <button type="button" class="btn btn-ghost" id="cancelFormBtn">Cancel</button>
-        <button type="submit" class="btn btn-primary" id="saveBtn">Save recipe</button>
-      </div>
-    </form>
-
-  </section>
-
-  <!-- ============ RECIPE DETAIL VIEW ============ -->
-  <section id="detailView" class="view" hidden>
-
-    <button class="back-link" id="backToBoardFromDetailBtn">&larr; Back to recipe box</button>
-
-    <h2 id="detailTitle"></h2>
-    <div class="recipe-meta" id="detailMeta"></div>
-
-    <div class="multiplier-group" id="multiplierGroup">
-      <button type="button" class="chip active" data-multiplier="1">1x</button>
-      <button type="button" class="chip" data-multiplier="2">2x</button>
-      <button type="button" class="chip" data-multiplier="4">4x</button>
-    </div>
-
-    <ul class="detail-ingredient-list" id="detailIngredientList">
-      <!-- scaled ingredient lines injected by app.js -->
-    </ul>
-
-    <div class="form-actions">
-      <button type="button" class="btn btn-primary" id="addToShoppingListBtn">Add to Cart</button>
-    </div>
-    <span class="field-hint" id="addToListStatus"></span>
-
-  </section>
-
-  <!-- ============ 🛒 Cart VIEW ============ -->
-  <section id="shoppingListView" class="view" hidden>
-
-    <button class="back-link" id="backToBoardFromListBtn">&larr; Back to recipe box</button>
-
-    <div class="form-actions">
-      <h2>🛒 Cart</h2>
-      <button type="button" class="btn btn-ghost" id="clearListBtn">Clear list</button>
-    </div>
- <div id="shoppingListLoading" class="loading-state" hidden>Loading your Cart…</div>
-<ul class="shopping-list" id="shoppingListItems">
-      <!-- checkable items injected by app.js -->
-    </ul>
-
-
-    <div id="shoppingListEmpty" class="empty-state" hidden>
-      <p class="empty-title">Your 🛒 Cart is empty</p>
-      <p class="empty-copy">Open a recipe and tap "Add to Cart" to fill it up.</p>
-    </div>
-
-  </section>
-
-</main>
-
-<!-- Delete confirmation -->
-<div id="deleteDialog" class="dialog-overlay" hidden>
-  <div class="dialog">
-    <p class="dialog-title">Delete this recipe?</p>
-    <p class="dialog-copy">This can't be undone.</p>
-    <div class="dialog-actions">
-      <button class="btn btn-ghost" id="cancelDeleteBtn">Keep it</button>
-      <button class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+    <h2 class="modal-title" id="authPromptTitle">Sign in to continue</h2>
+    <p class="modal-copy" id="authPromptMessage">This feature is available to signed-in Recipe Box members. Sign in to create recipes, build shopping lists, and manage your cookbook.</p>
+    <div class="modal-actions modal-actions-col">
+      <button class="btn btn-google btn-lg" id="authPromptSignInBtn">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+          <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+          <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+          <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+        </svg>
+        Continue with Google
+      </button>
+      <button class="btn btn-ghost" id="authPromptCancelBtn">Maybe later</button>
     </div>
   </div>
 </div>
 
-<!-- Clear list confirmation -->
-<div id="clearListDialog" class="dialog-overlay" hidden>
-  <div class="dialog">
-    <p class="dialog-title">Clear the shopping list?</p>
-    <p class="dialog-copy">This can't be undone.</p>
-    <div class="dialog-actions">
-      <button class="btn btn-ghost" id="cancelClearListBtn">Keep it</button>
-      <button class="btn btn-danger" id="confirmClearListBtn">Clear list</button>
+<!-- Delete recipe confirmation -->
+<div id="deleteDialog" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="deleteDialogTitle">
+    <div class="modal-icon modal-icon-danger">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h2 class="modal-title" id="deleteDialogTitle">Delete this recipe?</h2>
+    <p class="modal-copy">This action can't be undone. The recipe will be permanently removed from your cookbook.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelDeleteBtn">Keep Recipe</button>
+      <button class="btn btn-danger" id="confirmDeleteBtn">Delete Recipe</button>
     </div>
   </div>
 </div>
 
+<!-- Clear shopping list confirmation -->
+<div id="clearListDialog" class="modal-overlay" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="clearDialogTitle">
+    <div class="modal-icon modal-icon-danger">
+      <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+    </div>
+    <h2 class="modal-title" id="clearDialogTitle">Clear shopping list?</h2>
+    <p class="modal-copy">All current items will be removed. You can always add them back from a recipe.</p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" id="cancelClearListBtn">Keep List</button>
+      <button class="btn btn-danger" id="confirmClearListBtn">Clear List</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     TOAST NOTIFICATIONS
+     ============================================================ -->
+<div id="toastContainer" class="toast-container" aria-live="polite"></div>
+
+<!-- ============================================================
+     FIREBASE + APP SCRIPTS
+     ============================================================ -->
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-auth-compat.js"></script>
-<script src="app.js"></script>
+<script src="app.js?v=6"></script>
 
 </body>
 </html>
