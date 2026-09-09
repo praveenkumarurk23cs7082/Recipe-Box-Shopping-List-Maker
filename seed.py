@@ -1,9 +1,11 @@
 """
 seed.py — populate recipe_box.db with sample recipes.
 Run from the project root:
-    python seed.py
+    python seed.py <firebase_uid>
 Safe to run multiple times: skips recipes whose title already exists.
 """
+
+import sys
 
 from app.database import SessionLocal, engine
 from app.models import Base, Recipe, RecipeIngredient, Category
@@ -167,13 +169,17 @@ RECIPES = [
 ]
 
 
-def seed():
+def seed(user_id: str):
     db = SessionLocal()
     try:
         added = 0
         skipped = 0
         for data in RECIPES:
-            existing = db.query(Recipe).filter(Recipe.title == data["title"]).first()
+            existing = (
+                db.query(Recipe)
+                .filter(Recipe.title == data["title"], Recipe.created_by == user_id)
+                .first()
+            )
             if existing:
                 skipped += 1
                 continue
@@ -183,6 +189,7 @@ def seed():
                 category=data["category"],
                 prep_time_min=data["prep_time_min"],
                 base_servings=data["base_servings"],
+                created_by=user_id,
             )
             for i, line in enumerate(data["ingredient_lines"]):
                 line = line.strip()
@@ -202,7 +209,7 @@ def seed():
             added += 1
 
         db.commit()
-        print(f"Seeded {added} recipes ({skipped} already existed - skipped).")
+        print(f"Seeded {added} recipes for user {user_id} ({skipped} already existed - skipped).")
     except Exception as e:
         db.rollback()
         raise e
@@ -211,4 +218,9 @@ def seed():
 
 
 if __name__ == "__main__":
-    seed()
+    if len(sys.argv) != 2:
+        print("Usage: python seed.py <firebase_uid>")
+        print("Find your Firebase UID in the Firebase Console under Authentication > Users,")
+        print("or by signing in to the app and checking currentUser.uid in the browser console.")
+        sys.exit(1)
+    seed(sys.argv[1])
