@@ -12,6 +12,10 @@ TEST_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(TEST_DATABASE_URL, connect_args={"check_same_thread": False})
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+# Fake user ID used across every shopping-list test, since add_ingredients_to_list
+# scopes everything per-user
+TEST_USER_ID = "test-user-123"
+
 
 @pytest.fixture(scope="function")
 def db_session():
@@ -76,7 +80,7 @@ def test_add_ingredients_to_list_fresh(db_session):
     ing2 = models.RecipeIngredient(recipe_id=1, quantity=2.0, unit=None, name="eggs", raw_line="2 eggs")
 
     # Add to list
-    add_ingredients_to_list(db_session, [ing1, ing2], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing1, ing2], user_id=TEST_USER_ID, multiplier=1.0)
 
     # Fetch from db
     items = db_session.query(models.ShoppingListItem).all()
@@ -97,12 +101,12 @@ def test_add_ingredients_consolidation_and_scaling(db_session):
     # 1. Add base recipe ingredients
     ing1 = models.RecipeIngredient(recipe_id=1, quantity=2.0, unit="cup", name="flour", raw_line="2 cups flour")
     ing2 = models.RecipeIngredient(recipe_id=1, quantity=2.0, unit=None, name="eggs", raw_line="2 eggs")
-    add_ingredients_to_list(db_session, [ing1, ing2], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing1, ing2], user_id=TEST_USER_ID, multiplier=1.0)
 
     # 2. Add same ingredients from another recipe (or scaled at 2x)
     ing3 = models.RecipeIngredient(recipe_id=2, quantity=1.5, unit="CUP", name="Flour", raw_line="1.5 cups Flour")
     ing4 = models.RecipeIngredient(recipe_id=2, quantity=1.0, unit=None, name="Eggs", raw_line="1 Egg")
-    add_ingredients_to_list(db_session, [ing3, ing4], multiplier=2.0)  # flour +3.0, eggs +2.0
+    add_ingredients_to_list(db_session, [ing3, ing4], user_id=TEST_USER_ID, multiplier=2.0)  # flour +3.0, eggs +2.0
 
     # Fetch and check
     items = db_session.query(models.ShoppingListItem).all()
@@ -116,11 +120,11 @@ def test_add_ingredients_consolidation_and_scaling(db_session):
 def test_add_ingredients_fuzzy_not_consolidating_mathematically(db_session):
     # Add a fuzzy non-scalable item
     ing1 = models.RecipeIngredient(recipe_id=1, quantity=None, unit=None, name="salt to taste", raw_line="salt to taste")
-    add_ingredients_to_list(db_session, [ing1], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing1], user_id=TEST_USER_ID, multiplier=1.0)
 
     # Add numeric item of same name
     ing2 = models.RecipeIngredient(recipe_id=2, quantity=1.0, unit="tsp", name="salt to taste", raw_line="1 tsp salt to taste")
-    add_ingredients_to_list(db_session, [ing2], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing2], user_id=TEST_USER_ID, multiplier=1.0)
 
     # Fetch and check
     items = db_session.query(models.ShoppingListItem).all()
@@ -131,7 +135,7 @@ def test_add_ingredients_fuzzy_not_consolidating_mathematically(db_session):
 def test_add_ingredients_does_not_consolidate_checked_items(db_session):
     # 1. Add item
     ing1 = models.RecipeIngredient(recipe_id=1, quantity=2.0, unit="cup", name="flour", raw_line="2 cups flour")
-    add_ingredients_to_list(db_session, [ing1], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing1], user_id=TEST_USER_ID, multiplier=1.0)
 
     # 2. Check the item off (strike-through)
     item = db_session.query(models.ShoppingListItem).filter_by(name="flour").first()
@@ -139,7 +143,7 @@ def test_add_ingredients_does_not_consolidate_checked_items(db_session):
     db_session.commit()
 
     # 3. Add same item again
-    add_ingredients_to_list(db_session, [ing1], multiplier=1.0)
+    add_ingredients_to_list(db_session, [ing1], user_id=TEST_USER_ID, multiplier=1.0)
 
     # Check
     items = db_session.query(models.ShoppingListItem).filter_by(name="flour").all()
