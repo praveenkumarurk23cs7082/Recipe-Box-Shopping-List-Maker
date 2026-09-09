@@ -18,7 +18,7 @@ A personal recipe repository that turns the ingredients of any selected recipes 
 - **Database:** PostgreSQL via Cloud SQL (SQLite for local dev — same code, only `DATABASE_URL` changes)
 - **Frontend:** Vanilla HTML/CSS/JS, deployed on Firebase Hosting (deliberately no framework/build step)
 - **Auth:** Firebase Authentication (Google Sign-In), verified server-side via `firebase-admin`
-- **Other GCP services:** Cloud Storage (recipe photo uploads), Vision AI + Natural Language API (scan a recipe photo to auto-fill ingredients), Cloud Build (CI/CD on push to `develop`), Artifact Registry, Secret Manager
+- **Other GCP services:** Cloud Storage (recipe photo uploads), Vision AI + Natural Language API (scan a recipe photo to auto-fill ingredients), Cloud Build (CI/CD on push to `main`), Artifact Registry, Secret Manager
 
 ## Local development setup
 
@@ -36,10 +36,10 @@ Open `frontend/index.html` directly in a browser (or serve it), and update `API_
 ## Seed data
 
 ```bash
-python seed.py
+python seed.py <firebase_uid>
 ```
 
-Populates sample recipes across all three categories. Safe to run multiple times — skips recipes whose title already exists.
+Populates sample recipes across all three categories, owned by the given Firebase user so they show up when that user signs in. Find a user's UID in the Firebase Console under Authentication → Users. Safe to run multiple times — skips recipes whose title already exists for that user.
 
 ## Tests
 
@@ -47,9 +47,11 @@ Populates sample recipes across all three categories. Safe to run multiple times
 pytest tests/
 ```
 
+(`pyproject.toml` sets `pythonpath = ["."]` so this works from the project root without needing `python -m pytest`.)
+
 ## Deployment
 
-- **Backend:** Cloud Build auto-deploys to Cloud Run on every push to `develop` (see `cloudbuild.yaml`).
+- **Backend:** Cloud Build auto-deploys to Cloud Run on every push to `main` (see `cloudbuild.yaml`).
 - **Frontend:** manual deploy via `firebase deploy --only hosting` (not yet wired to auto-deploy on push).
 
 See `demo_script.md` and `limitations_slide.md` for the presentation walkthrough and known scope limitations.
